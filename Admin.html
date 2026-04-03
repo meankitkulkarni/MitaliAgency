@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ModernBread — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--bg:#fff;--bg2:#f8f8f6;--bg3:#f0f0ee;--text:#0f0f0f;--text2:#5a5a5a;--text3:#999;--border:#e8e8e8;--border2:#d4d4d4;--green:#16a34a;--green-bg:#f0fdf4;--green-bd:#bbf7d0;--red:#dc2626;--red-bg:#fef2f2;--red-bd:#fecaca;--amber:#d97706;--amber-bg:#fffbeb;--amber-bd:#fde68a;--blue:#2563eb;--blue-bg:#eff6ff;--blue-bd:#bfdbfe;--sw:228px;--r:10px;--rlg:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',sans-serif;font-size:14px;line-height:1.5;display:flex;min-height:100vh}
+.sidebar{width:var(--sw);min-width:var(--sw);background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;overflow-y:auto}
+.sidebar::-webkit-scrollbar{display:none}
+.sb-brand{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.sb-brand-name{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.sb-brand-tag{font-size:10px;color:var(--text3);font-weight:500;margin-top:2px;text-transform:uppercase;letter-spacing:.08em}
+.sb-nav{flex:1;padding:12px 10px}
+.sb-group{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:8px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;margin-bottom:2px;transition:all .15s;white-space:nowrap}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;stroke-width:2}
+.nav-item:hover{background:var(--bg2);color:var(--text)}
+.nav-item.active{background:var(--text);color:#fff}
+.nav-item.active svg{stroke:#fff}
+.sb-footer{padding:16px;border-top:1px solid var(--border)}
+.sb-user{font-size:12px;color:var(--text2)}
+.sb-user strong{display:block;font-size:13px;color:var(--text)}
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--bg);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+.topbar-title{font-size:17px;font-weight:700;letter-spacing:-.2px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.page{display:none;padding:28px;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+/* CALENDAR */
+.cal-wrap{position:relative}
+.cal-btn{background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:7px 13px;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.cal-btn svg{width:14px;height:14px;stroke:var(--text2)}
+.cal-btn:hover{border-color:var(--text)}
+.cal-drop{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--bg);border:1px solid var(--border2);border-radius:var(--rlg);padding:16px;z-index:300;box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:280px}
+.cal-drop.open{display:block}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nbtn{background:none;border:none;cursor:pointer;color:var(--text2);padding:4px 8px;border-radius:6px;font-size:16px}
+.cal-nbtn:hover{background:var(--bg2)}
+.cal-month{font-size:14px;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dh{font-size:10px;font-weight:600;color:var(--text3);text-align:center;padding:4px 0;text-transform:uppercase}
+.cal-d{font-size:12px;text-align:center;padding:6px 2px;border-radius:6px;cursor:pointer;color:var(--text);position:relative}
+.cal-d:hover:not(.cal-empty){background:var(--bg2)}
+.cal-d.cal-sel{background:var(--text);color:#fff}
+.cal-d.cal-today{font-weight:700;color:var(--blue)}
+.cal-d.cal-today.cal-sel{color:#fff}
+.cal-d.cal-empty{pointer-events:none}
+.cal-d.cal-has::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--green)}
+.cal-d.cal-sel.cal-has::after{background:#fff}
+.cal-presets{display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+.cal-pre{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);cursor:pointer;background:var(--bg);color:var(--text2)}
+.cal-pre:hover,.cal-pre.active{background:var(--text);color:#fff;border-color:var(--text)}
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat-row-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px}
+.sc{background:var(--bg);border:1px solid var(--border);border-radius:var(--rlg);padding:18px 20px}
+.sc-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.sc-val{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.sc-sub{font-size:12px;color:var(--text2);margin-top:5px}
+/* CARD */
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rlg);overflow:hidden;margin-bottom:18px}
+.cb{padding:20px 22px}
+.card-title{font-size:13px;font-weight:700;margin-bottom:14px}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-title{font-size:14px;font-weight:700}
+/* TABLE */
+.dt{width:100%;border-collapse:collapse}
+.dt th{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;background:var(--bg2)}
+.dt td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tbody tr:hover{background:var(--bg2)}
+.dt tr.click{cursor:pointer}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.bg{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.br{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.ba{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.bb{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.bgr{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+/* BUTTONS */
+.btn-p{background:var(--text);color:#fff;border:none;padding:9px 16px;border-radius:var(--r);font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+.btn-p:hover{background:#333}
+.btn-s{background:var(--bg);color:var(--text);border:1.5px solid var(--border2);padding:8px 14px;border-radius:var(--r);font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+.btn-s:hover{background:var(--bg2)}
+.btn-d{background:var(--red-bg);color:var(--red);border:1.5px solid var(--red-bd);padding:7px 12px;border-radius:var(--r);font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.sm{padding:5px 12px;font-size:12px}
+/* FORM */
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+.fi{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:10px 13px;font-family:'Bricolage Grotesque',sans-serif;font-size:14px;color:var(--text);outline:none}
+.fi:focus{border-color:var(--text)}
+.fi::placeholder{color:var(--text3)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:300;align-items:center;justify-content:center}
+.mo.open{display:flex}
+.md{background:var(--bg);border-radius:var(--rlg);padding:26px;width:520px;max-width:96vw;max-height:90vh;overflow-y:auto}
+.mt{font-size:16px;font-weight:800;margin-bottom:18px}
+.mf{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+/* SEARCH */
+.sb{display:flex;gap:10px;margin-bottom:14px}
+.si{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:8px 13px;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;color:var(--text);outline:none}
+.si:focus{border-color:var(--text)}
+.si::placeholder{color:var(--text3)}
+/* PAY SELECT */
+.ps{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:'Bricolage Grotesque',sans-serif;font-size:12px;color:var(--text);cursor:pointer;outline:none}
+/* FEED */
+.feed-item{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+.feed-item:last-child{border-bottom:none}
+.fdot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:5px}
+.fdot.cr{background:var(--amber)}
+/* MONO */
+.mono{font-family:'DM Mono',monospace;font-size:13px}
+/* STOCK BAR */
+.sbar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:6px}
+.sbar-fill{height:100%;border-radius:2px;transition:width .4s}
+.f-ok{background:var(--green)}.f-warn{background:var(--amber)}.f-low{background:var(--red)}
+/* PL */
+.pl-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.pl-row:last-child{border-bottom:none}
+.pl-row.pl-total{font-weight:700;font-size:15px;padding-top:12px}
+.pl-label{font-size:13px;color:var(--text2)}
+.pl-row.pl-total .pl-label{color:var(--text)}
+.pl-val{font-size:14px;font-weight:600}
+/* REPORT GRID */
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.rc{background:var(--bg);border:1px solid var(--border);border-radius:var(--rlg);padding:18px;cursor:pointer;transition:border-color .15s}
+.rc:hover{border-color:var(--border2)}
+.rc-icon{width:34px;height:34px;border-radius:var(--r);background:var(--bg2);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.rc-icon svg{width:17px;height:17px}
+.rc-name{font-size:13px;font-weight:700;margin-bottom:3px}
+.rc-desc{font-size:11px;color:var(--text2)}
+/* EMPTY */
+.empty{text-align:center;padding:40px 24px;color:var(--text3)}
+.empty-title{font-size:14px;font-weight:600;color:var(--text2);margin-bottom:4px}
+/* DAILY STOCK */
+.se-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.se-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.se-name{font-size:12px;font-weight:600;margin-bottom:4px}
+.se-sub{font-size:11px;color:var(--text2);margin-bottom:8px}
+.se-inp{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--text);outline:none;text-align:center}
+.se-inp:focus{border-color:var(--text)}
+.bill-row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-radius:var(--r);background:var(--green-bg);border:1px solid var(--green-bd);margin-bottom:16px}
+.bill-label{font-size:13px;font-weight:600;color:var(--green)}
+.bill-val{font-size:20px;font-weight:800;font-family:'DM Mono',monospace;color:var(--green)}
+/* TRAY */
+.tray-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+.tray-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.tray-lbl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+/* BALANCE */
+.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.bal-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rlg);padding:18px 20px}
+.bal-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.bal-val{font-size:22px;font-weight:800;letter-spacing:-.3px}
+.bal-sub{font-size:11px;color:var(--text2);margin-top:4px}
+/* ORDER FORM */
+.osku-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.osku-row:last-child{border-bottom:none}
+.osku-name{flex:1;font-size:13px;font-weight:500}
+.osku-price{font-size:12px;color:var(--text2);min-width:60px;text-align:right}
+.oqty{width:70px;background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:14px;text-align:center;outline:none}
+.oqty:focus{border-color:var(--text)}
+.osub{font-size:13px;font-weight:600;min-width:70px;text-align:right;font-family:'DM Mono',monospace}
+#dsr-table-wrap{overflow-x:auto;max-width:100%}
+#dsr-table-wrap .dt td,#dsr-table-wrap .dt th{white-space:nowrap}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* HAMBURGER */
+.hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);cursor:pointer;flex-shrink:0}
+.hamburger svg{width:18px;height:18px;stroke:var(--text)}
+/* SIDEBAR OVERLAY */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:45;opacity:0;transition:opacity .25s}
+.sb-overlay.open{opacity:1}
+/* MOBILE */
+@media(max-width:768px){
+  :root{--sw:240px}
+  .sidebar{transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:50}
+  .sidebar.mob-open{transform:translateX(0)}
+  .sb-overlay{display:block;pointer-events:none}
+  .sb-overlay.open{pointer-events:all}
+  .main{margin-left:0}
+  .hamburger{display:flex}
+  .topbar{padding:10px 16px;gap:8px}
+  .topbar-title{font-size:15px}
+  .topbar-right{gap:6px}
+  .cal-btn span{display:none}
+  .cal-btn svg{margin:0}
+  .cal-drop{right:-60px;min-width:260px}
+  .page{padding:16px !important}
+  .stat-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-row-3{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat-row-2{grid-template-columns:1fr;gap:10px}
+  .bal-grid{grid-template-columns:1fr;gap:10px}
+  .rg{grid-template-columns:repeat(2,1fr);gap:10px}
+  .se-grid{grid-template-columns:repeat(2,1fr)}
+  .tray-grid{grid-template-columns:1fr}
+  .fr{grid-template-columns:1fr}
+  div[style*="grid-template-columns:1fr 1fr"]{display:block!important}
+  .two-col-grid{display:block!important}
+  .two-col-grid>.card{margin-bottom:14px}
+  div[style*="grid-template-columns:repeat(3"]{display:grid!important;grid-template-columns:1fr!important}
+  .sc-val{font-size:20px}
+  .dt th,.dt td{padding:8px 10px;font-size:12px}
+  .btn-p.sm,.btn-s.sm,.btn-d.sm{padding:5px 10px;font-size:11px}
+  .md{padding:18px;max-height:85vh}
+  .export-btn-text{display:none}
+  div[style*="display:grid;grid-template-columns:1fr 1fr;gap:16"]{display:block!important}
+}
+@media(max-width:480px){
+  .stat-row{grid-template-columns:1fr 1fr}
+  .rg{grid-template-columns:1fr}
+  .cal-drop{position:fixed;left:8px;right:8px;top:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-name">ModernBread</div>
+    <div class="sb-brand-tag">Admin Panel</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-group">Overview</div>
+    <div class="nav-item active" id="ni-dashboard" onclick="navTo('dashboard',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard
+    </div>
+    <div class="nav-item" id="ni-live" onclick="navTo('live',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Live Orders
+    </div>
+    <div class="nav-item" id="ni-dailystock" onclick="navTo('dailystock',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Daily Stock
+    </div>
+    <div class="nav-item" id="ni-expenses" onclick="navTo('expenses',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Expenses
+    </div>
+    <div class="sb-group">Reports</div>
+    <div class="nav-item" id="ni-dsr" onclick="navTo('dsr',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>DSR
+    </div>
+    <div class="nav-item" id="ni-reports" onclick="navTo('reports',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Reports
+    </div>
+    <div class="nav-item" id="ni-invoices" onclick="navTo('invoices',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Invoices
+    </div>
+    <div class="sb-group">Manage</div>
+    <div class="nav-item" id="ni-products" onclick="navTo('products',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>Products
+    </div>
+    <div class="nav-item" id="ni-merchants" onclick="navTo('merchants',this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Merchants
+    </div>
+
+  </nav>
+  <div class="sb-footer"><div class="sb-user"><strong>Admin</strong>ModernBread Distributors</div></div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="hamburger" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-title" id="page-title">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <div class="cal-wrap" id="cal-wrap">
+        <button class="cal-btn" onclick="toggleCal()">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span id="cal-label">Today</span>
+        </button>
+        <div class="cal-drop" id="cal-drop">
+          <div class="cal-nav">
+            <button class="cal-nbtn" onclick="calMove(-1)">&#8592;</button>
+            <span class="cal-month" id="cal-month"></span>
+            <button class="cal-nbtn" onclick="calMove(1)">&#8594;</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-presets">
+            <div class="cal-pre active" onclick="setPreset('today')">Today</div>
+            <div class="cal-pre" onclick="setPreset('week')">This Week</div>
+            <div class="cal-pre" onclick="setPreset('month')">This Month</div>
+            <div class="cal-pre" onclick="setPreset('all')">All Time</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-s sm" onclick="triggerDatasetUpload()">Upload Dataset</button>
+        <button class="btn-p sm" onclick="exportReport()"><span class="export-btn-text">Export </span>PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active" style="padding:28px">
+    <div class="stat-row">
+      <div class="sc"><div class="sc-label">Gross Revenue</div><div class="sc-val" id="d-rev" style="color:var(--green)">Rs. 0</div><div class="sc-sub" id="d-rev-sub">0 orders</div></div>
+      <div class="sc"><div class="sc-label">Net Profit / Loss</div><div class="sc-val" id="d-profit">Rs. 0</div><div class="sc-sub">After COGS + expenses</div></div>
+      <div class="sc"><div class="sc-label">Credit Pending</div><div class="sc-val" id="d-credit" style="color:var(--amber)">Rs. 0</div><div class="sc-sub" id="d-credit-sub">0 unpaid</div></div>
+      <div class="sc"><div class="sc-label">Agent Expenses</div><div class="sc-val" id="d-exp" style="color:var(--red)">Rs. 0</div><div class="sc-sub">Deducted from profit</div></div>
+    </div>
+    <div class="bal-grid">
+      <div class="bal-card"><div class="bal-lbl">Opening Balance</div><div class="bal-val" id="d-opening">Rs. 0</div><div class="bal-sub" id="d-open-sub">Morning opening entry</div></div>
+      <div class="bal-card"><div class="bal-lbl">Closing Balance</div><div class="bal-val" id="d-closing">Rs. 0</div><div class="bal-sub">Opening + collections - expenses</div></div>
+    </div>
+    <div class="card" style="margin-bottom:18px"><div class="cb"><div class="card-title">Daily Revenue — Last 7 Days</div><canvas id="chart-rev" height="70"></canvas></div></div>
+    <div class="two-col-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card"><div class="cb"><div class="sec-hdr"><div class="sec-title">Product Performance</div></div><table class="dt"><thead><tr><th>Product</th><th>Units</th><th>Revenue</th><th>Margin</th></tr></thead><tbody id="prod-perf"></tbody></table></div></div>
+      <div class="card"><div class="cb"><div class="sec-hdr"><div class="sec-title">P&amp;L Summary</div></div><div id="pl-body"></div></div></div>
+    </div>
+  </div>
+
+  <!-- LIVE ORDERS -->
+  <div id="page-live" class="page" style="padding:28px">
+    <div class="card"><div class="cb">
+      <div class="sec-hdr">
+        <div class="sec-title">Order Feed</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-p sm" onclick="openAddOrder()">+ Merchant Order</button>
+          <button class="btn-s sm" onclick="openRetailSale()">+ Retail Sale</button>
+          <button class="btn-s sm" onclick="renderLive()">Refresh</button>
+        </div>
+      </div>
+      <div id="live-feed"></div>
+    </div></div>
+  </div>
+
+  <!-- DAILY STOCK -->
+  <div id="page-dailystock" class="page" style="padding:28px">
+    <div class="card"><div class="cb">
+      <div class="sec-hdr">
+        <div class="sec-title" id="se-title">Daily Stock Entry</div>
+        <button class="btn-p sm" onclick="saveStockEntry()">Save Entry</button>
+      </div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Enter units received today. Bill amount auto-calculates to cross-check with physical supplier invoice.</p>
+      <div class="se-grid" id="se-form"></div>
+      <div class="bill-row"><span class="bill-label">Calculated Bill Amount</span><span class="bill-val" id="bill-val">Rs. 0</span></div>
+      <div class="card" style="margin-bottom:0;margin-top:12px"><div class="cb" style="padding:14px 18px">
+        <div class="sec-title" style="margin-bottom:10px">Closing Stock by Product</div>
+        <div id="se-closing-table"></div>
+      </div></div>
+      <div class="tray-grid">
+        <div class="tray-card"><div class="tray-lbl">Full Trays Received</div><input class="fi" type="number" id="tray-full" placeholder="0" min="0" oninput="saveTray()"/></div>
+        <div class="tray-card"><div class="tray-lbl">Empty Trays Returned</div><input class="fi" type="number" id="tray-empty" placeholder="0" min="0" oninput="saveTray()"/></div>
+      </div>
+    </div></div>
+    <div class="card"><div class="cb"><div class="sec-hdr"><div class="sec-title">Entry History</div></div><div id="se-history"></div></div></div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div id="page-expenses" class="page" style="padding:28px">
+    <div class="stat-row-3">
+      <div class="sc"><div class="sc-label">Total Expenses</div><div class="sc-val" id="exp-total" style="color:var(--red)">Rs. 0</div><div class="sc-sub">Selected period</div></div>
+      <div class="sc"><div class="sc-label">Revenue</div><div class="sc-val" id="exp-rev" style="color:var(--green)">Rs. 0</div><div class="sc-sub">Same period</div></div>
+      <div class="sc"><div class="sc-label">Net After Expenses</div><div class="sc-val" id="exp-net">Rs. 0</div><div class="sc-sub">Revenue minus expenses</div></div>
+    </div>
+    <div class="card"><div class="cb">
+      <div class="sec-hdr">
+        <div class="sec-title">Expense Log</div>
+        <button class="btn-p sm" onclick="openExpenseModal()">+ Add Expense</button>
+      </div>
+      <table class="dt"><thead><tr><th>Description</th><th>Date &amp; Time</th><th>Amount</th><th>Action</th></tr></thead><tbody id="exp-body"></tbody></table>
+    </div></div>
+  </div>
+
+  <!-- REPORTS -->
+  <div id="page-reports" class="page" style="padding:28px">
+    <div class="rg">
+      <div class="rc" onclick="showReport('daily')"><div class="rc-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div class="rc-name">Daily Summary</div><div class="rc-desc">Revenue and orders by day</div></div>
+      <div class="rc" onclick="showReport('merchant')"><div class="rc-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><div class="rc-name">Merchant-wise Sales</div><div class="rc-desc">Breakdown per shop</div></div>
+      <div class="rc" onclick="showReport('product')"><div class="rc-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg></div><div class="rc-name">Product Performance</div><div class="rc-desc">Best &amp; worst sellers</div></div>
+      <div class="rc" onclick="showReport('pl')"><div class="rc-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="rc-name">P&amp;L Statement</div><div class="rc-desc">Revenue, COGS, profit</div></div>
+      <div class="rc" onclick="showReport('credit')"><div class="rc-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><div class="rc-name">Credit Pending</div><div class="rc-desc">Unpaid by merchant</div></div>
+      <div class="rc" onclick="showReport('expense')"><div class="rc-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg></div><div class="rc-name">Expense Report</div><div class="rc-desc">Agent field expenses</div></div>
+    </div>
+    <div class="card"><div class="cb">
+      <div class="sec-hdr"><div class="sec-title" id="report-title">Select a report above</div><button class="btn-s sm" onclick="exportReport()" id="rdl-btn" style="display:none">Download PDF</button></div>
+      <div id="report-content"><div class="empty"><div class="empty-title">Choose a report</div>Click any card above.</div></div>
+    </div></div>
+  </div>
+
+  <!-- INVOICES -->
+  <div id="page-invoices" class="page" style="padding:28px">
+    <div class="card"><div class="cb">
+      <div class="sb">
+        <input class="si" id="inv-search" type="text" placeholder="Search by merchant or invoice ID..." oninput="renderInvoices()"/>
+        <select class="ps" style="padding:8px 12px" id="inv-pf" onchange="renderInvoices()">
+          <option value="">All payments</option><option value="cash">Cash</option><option value="upi">UPI</option><option value="credit">Credit</option>
+        </select>
+      </div>
+      <table class="dt"><thead><tr><th>Invoice ID</th><th>Merchant</th><th>Date &amp; Time</th><th>Items</th><th>Amount</th><th>Payment</th><th>Status</th><th>Action</th></tr></thead><tbody id="inv-body"></tbody></table>
+    </div></div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div id="page-products" class="page" style="padding:28px">
+    <div class="card"><div class="cb">
+      <div class="sec-hdr"><div class="sec-title">Products &amp; Pricing</div><button class="btn-p sm" onclick="openProductModal()">+ Add Product</button></div>
+      <table class="dt"><thead><tr><th>Product Name</th><th>DSR Code</th><th>Purchase Price</th><th>Merchant Price</th><th>Retail Price</th><th>Margin</th><th>Actions</th></tr></thead><tbody id="prod-body"></tbody></table>
+    </div></div>
+  </div>
+
+  <!-- DSR -->
+  <div id="page-dsr" class="page" style="padding:28px">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:16px;font-weight:800;letter-spacing:-.2px" id="dsr-date-label">DSR — Today</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">Mitali Agency, Roha-Raigad · Modern Bread</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-s sm" onclick="renderDSR()">Refresh</button>
+        <button class="btn-p sm" onclick="downloadDSR()">Download Excel</button>
+      </div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div style="display:flex;gap:0;background:var(--bg3);border-radius:var(--r);padding:3px;margin-bottom:20px;width:fit-content">
+      <button id="dsr-tab-route" onclick="switchDSRTab('route')" style="padding:7px 20px;border-radius:8px;border:none;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:var(--text);color:#fff">Route Sheet</button>
+      <button id="dsr-tab-close" onclick="switchDSRTab('close')" style="padding:7px 20px;border-radius:8px;border:none;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text2)">Day Close</button>
+    </div>
+
+    <!-- ROUTE SHEET TAB -->
+    <div id="dsr-pane-route">
+      <!-- KPI strip -->
+      <div class="stat-row" style="margin-bottom:18px;">
+        <div class="sc"><div class="sc-label">Today's Bill</div><div class="sc-val" id="dsr-bill" style="color:var(--text)">Rs. 0</div><div class="sc-sub">Merchant + Retail</div></div>
+        <div class="sc"><div class="sc-label">Cash Received</div><div class="sc-val" id="dsr-cash" style="color:var(--green)">Rs. 0</div><div class="sc-sub">Cash + UPI + recoveries</div></div>
+        <div class="sc"><div class="sc-label">Credit Pending</div><div class="sc-val" id="dsr-credit" style="color:var(--amber)">Rs. 0</div><div class="sc-sub">To collect</div></div>
+        <div class="sc"><div class="sc-label">Retail Sales</div><div class="sc-val" id="dsr-retail" style="color:var(--blue)">Rs. 0</div><div class="sc-sub">Direct to customer</div></div>
+      </div>
+
+      <!-- Merchant route cards -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:700">Merchant Route</div>
+          <div style="font-size:11px;color:var(--text3)" id="dsr-route-count">0 merchants</div>
+        </div>
+        <div id="dsr-route-list"></div>
+        <!-- Retail row pinned at bottom -->
+        <div id="dsr-retail-row" style="border-top:2px dashed var(--border2);display:none"></div>
+      </div>
+
+      <!-- Totals strip -->
+      <div id="dsr-totals-strip" style="background:var(--text);color:#fff;border-radius:var(--rlg);padding:16px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px"></div>
+    </div>
+
+    <!-- DAY CLOSE TAB -->
+    <div id="dsr-pane-close" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="two-col-grid">
+        <!-- Summary -->
+        <div class="card" style="margin-bottom:0">
+          <div class="cb">
+            <div class="sec-title" style="margin-bottom:14px">Summary</div>
+            <div id="dsr-summary-body"></div>
+          </div>
+        </div>
+        <!-- Payment -->
+        <div class="card" style="margin-bottom:0">
+          <div class="cb">
+            <div class="sec-title" style="margin-bottom:14px">Payment</div>
+            <div id="dsr-payment-body"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="two-col-grid">
+        <!-- Replacement Sheet -->
+        <div class="card" style="margin-bottom:0">
+          <div class="cb">
+            <div class="sec-title" style="margin-bottom:14px">Replacement Sheet</div>
+            <table class="dt"><thead><tr><th>Product</th><th>Units</th><th>Value</th></tr></thead><tbody id="dsr-rep-body"></tbody></table>
+          </div>
+        </div>
+        <!-- Trays -->
+        <div class="card" style="margin-bottom:0">
+          <div class="cb">
+            <div class="sec-title" style="margin-bottom:14px">Trays</div>
+            <div id="dsr-trays-body"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Balance Payment for the Day — full width -->
+      <div class="card" style="margin-bottom:0">
+        <div class="cb">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="sec-title">Credit Recovery & Outstanding</div>
+            <div style="font-size:11px;color:var(--text3)">Today's recoveries and pending dues</div>
+          </div>
+          <div id="dsr-balance-payment-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MERCHANTS -->
+  <div id="page-merchants" class="page" style="padding:28px">
+    <div class="card"><div class="cb">
+      <div class="sec-hdr"><div class="sec-title">Merchant Directory</div><button class="btn-p sm" onclick="openMerchantModal()">+ Add Merchant</button></div>
+      <div class="sb"><input class="si" id="merch-search" type="text" placeholder="Search merchants..." oninput="renderMerchants()"/></div>
+      <table class="dt"><thead><tr><th>Shop Name</th><th>Orders</th><th>Revenue</th><th>Last Order</th><th>Actions</th></tr></thead><tbody id="merch-body"></tbody></table>
+    </div></div>
+  </div>
+
+
+</main>
+<input type="file" id="dataset-upload" accept=".json,application/json" style="display:none" onchange="importDatasetFile(event)"/>
+
+<!-- PRODUCT MODAL -->
+<div class="mo" id="mo-product"><div class="md">
+  <div class="mt" id="prod-mt">Add Product</div>
+  <div class="fg"><label class="fl">Product Name</label><input class="fi" type="text" id="prod-name" placeholder="e.g. Brown Bread 400g"/></div>
+  <div class="fr">
+    <div class="fg"><label class="fl">Purchase Price (Rs.) <span style="font-weight:400;color:var(--text3)">— cost to us</span></label><input class="fi" type="number" id="prod-cost" placeholder="0"/></div>
+    <div class="fg"><label class="fl">Merchant Price (Rs.) <span style="font-weight:400;color:var(--text3)">— wholesale</span></label><input class="fi" type="number" id="prod-sale" placeholder="0"/></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label class="fl">Retail Price (Rs.) <span style="font-weight:400;color:var(--text3)">— to customer</span></label><input class="fi" type="number" id="prod-retail" placeholder="0"/></div>
+    <div class="fg"><label class="fl">DSR Code <span style="font-weight:400;color:var(--text3)">— short label</span></label><input class="fi" type="text" id="prod-code" placeholder="e.g. B, MG"/></div>
+  </div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-product')">Cancel</button><button class="btn-p" onclick="saveProduct()">Save Product</button></div>
+</div></div>
+
+<!-- EXPENSE MODAL -->
+<div class="mo" id="mo-expense"><div class="md" style="width:440px;">
+  <div class="mt">Add Expense</div>
+  <div class="fg"><label class="fl">Description</label><input class="fi" type="text" id="exp-desc-inp" placeholder="e.g. Vehicle fuel, tea & snacks"/></div>
+  <div class="fg"><label class="fl">Amount (Rs.)</label><input class="fi" type="number" id="exp-amt-inp" placeholder="0" min="0"/></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-expense')">Cancel</button><button class="btn-p" onclick="saveExpenseFromAdmin()">Add Expense</button></div>
+</div></div>
+
+<!-- MERCHANT MODAL -->
+<div class="mo" id="mo-merchant"><div class="md">
+  <div class="mt" id="merch-mt">Add Merchant</div>
+  <div class="fg"><label class="fl">Shop Name</label><input class="fi" type="text" id="merch-name" placeholder="e.g. Sharma General Store"/></div>
+  <div class="fg"><label class="fl">Area / Location</label><input class="fi" type="text" id="merch-area" placeholder="e.g. Kothrud"/></div>
+  <div class="fg"><label class="fl">Phone (optional)</label><input class="fi" type="tel" id="merch-phone" placeholder="9XXXXXXXXX"/></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-merchant')">Cancel</button><button class="btn-p" onclick="saveMerchant()">Save Merchant</button></div>
+</div></div>
+
+<!-- RETAIL SALE MODAL -->
+<div class="mo" id="mo-retail"><div class="md" style="width:560px">
+  <div class="mt">Add Retail Sale</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Direct sale to customer — retail prices apply.</div>
+  <div id="retail-prods"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--bg2);border-radius:var(--r);margin-top:8px;margin-bottom:14px">
+    <span style="font-size:13px;color:var(--text2)">Total</span>
+    <span style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace" id="retail-total">Rs. 0</span>
+  </div>
+  <div class="fg">
+    <label class="fl">Payment Mode</label>
+    <div style="display:flex;gap:8px">
+      <button class="btn-s sm" id="rpay-cash" onclick="setRetailPay('cash')" style="flex:1">Cash</button>
+      <button class="btn-s sm" id="rpay-upi" onclick="setRetailPay('upi')" style="flex:1">UPI</button>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Note (optional)</label><input class="fi" type="text" id="retail-note" placeholder="e.g. walkthrough customer"/></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-retail')">Cancel</button><button class="btn-p" onclick="saveRetailSale()">Save Retail Sale</button></div>
+</div></div>
+
+<!-- CREDIT PAYMENT MODAL (from DSR balance payment) -->
+<div class="mo" id="mo-credit-pay"><div class="md" style="width:500px">
+  <div class="mt" id="cp-title">Record Payment</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:4px" id="cp-merchant"></div>
+  <div style="font-size:12px;color:var(--amber);font-weight:600;margin-bottom:16px" id="cp-outstanding"></div>
+  <div id="cp-orders-list" style="max-height:220px;overflow-y:auto;margin-bottom:14px;border:1px solid var(--border);border-radius:var(--r)"></div>
+  <div class="fg"><label class="fl">Amount Received Today (Rs.)</label><input class="fi" type="number" id="cp-amount" placeholder="0" min="0"/></div>
+  <div class="fg">
+    <label class="fl">Payment Mode</label>
+    <select class="fi" id="cp-pay"><option value="cash">Cash</option><option value="upi">UPI / Online</option></select>
+  </div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-credit-pay')">Cancel</button><button class="btn-p" onclick="saveCreditPayment()">Mark Received</button></div>
+</div></div>
+<div class="mo" id="mo-opening-bal"><div class="md" style="width:440px">
+  <div class="mt">Good Morning! 🌅</div>
+  <p style="font-size:13px;color:var(--text2);margin-bottom:18px">Please enter today's opening balance to start the day.</p>
+  <div class="fg"><label class="fl">Opening Balance (Rs.)</label><input class="fi" type="number" id="ob-amount" placeholder="0" min="0"/></div>
+  <div class="fg"><label class="fl">Note (optional)</label><input class="fi" type="text" id="ob-note" placeholder="e.g. Carry forward from yesterday"/></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-opening-bal')">Skip</button><button class="btn-p" onclick="saveOpeningBalance()">Save Balance</button></div>
+</div></div>
+<div class="mo" id="mo-inv"><div class="md" style="width:560px">
+  <div class="mt" id="inv-mt">Invoice</div>
+  <div id="inv-mbody"></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-inv')">Close</button><button class="btn-p" onclick="dlFromModal()">Download PDF</button></div>
+</div></div>
+
+<!-- ADD ORDER MODAL - Step 1: Merchant Selection -->
+<div class="mo" id="mo-order-merch"><div class="md" style="width:540px">
+  <div class="mt">Add Order — Select Merchant</div>
+  <div class="fg"><input class="fi" type="text" id="ao-merch-search" placeholder="Search merchants..." oninput="filterAOMerchants()"/></div>
+  <div id="ao-merch-list" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);"></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-order-merch')">Cancel</button></div>
+</div></div>
+
+<!-- ADD ORDER MODAL - Step 2: SKU Entry (agent-style) -->
+<div class="mo" id="mo-order-sku"><div class="md" style="width:580px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div class="mt" style="margin-bottom:0" id="ao-sku-title">SKU 1 of N</div>
+    <button class="btn-s sm" onclick="closeAOSku();openMerchantPickerAO()">← Back</button>
+  </div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:14px" id="ao-sku-merchant-name"></div>
+  <!-- progress bar -->
+  <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:16px;overflow:hidden"><div id="ao-sku-prog" style="height:100%;background:var(--text);border-radius:2px;transition:width .3s"></div></div>
+  <!-- SKU card -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Product</div>
+    <div style="font-size:18px;font-weight:700" id="ao-sku-name"></div>
+    <div style="font-size:13px;color:var(--text2);margin-top:4px" id="ao-sku-price"></div>
+  </div>
+  <!-- Qty -->
+  <div class="fg">
+    <label class="fl">Quantity</label>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn-s sm" onclick="adjAOQty(-1)">−</button>
+      <input class="fi" type="number" id="ao-qty" value="0" min="0" oninput="calcAOSub()" style="text-align:center;width:80px"/>
+      <button class="btn-s sm" onclick="adjAOQty(1)">+</button>
+      <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;min-width:80px" id="ao-sub">Rs. 0</span>
+    </div>
+  </div>
+  <div class="mf" style="margin-top:12px">
+    <button class="btn-s" id="ao-prev-btn" onclick="aoSkuPrev()">← Prev</button>
+    <span style="flex:1"></span>
+    <button class="btn-p" id="ao-next-btn" onclick="aoSkuNext()">Next →</button>
+  </div>
+</div></div>
+
+<!-- ADD ORDER MODAL - Step 3: Review & Save -->
+<div class="mo" id="mo-order-review"><div class="md" style="width:580px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div class="mt" style="margin-bottom:0">Review Order</div>
+    <button class="btn-s sm" onclick="closeModal('mo-order-review');openAOSku(adminOrderSKUIdx)">← Edit Items</button>
+  </div>
+  <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px" id="ao-review-mname"></div>
+  <div id="ao-review-items" style="margin-bottom:12px"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--bg2);border-radius:var(--r);margin-bottom:14px">
+    <span style="font-size:13px;color:var(--text2)">Order Total</span>
+    <span style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace" id="ao-review-total">Rs. 0</span>
+  </div>
+  <div class="fg">
+    <label class="fl">Payment Mode</label>
+    <div style="display:flex;gap:8px">
+      <button class="btn-s sm" id="aopay-cash" onclick="setAOPay('cash')" style="flex:1">Cash</button>
+      <button class="btn-s sm" id="aopay-upi" onclick="setAOPay('upi')" style="flex:1">UPI</button>
+      <button class="btn-s sm" id="aopay-credit" onclick="setAOPay('credit')" style="flex:1">Credit</button>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">Note (optional)</label><input class="fi" type="text" id="ao-review-note" placeholder="Any note..."/></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-order-review')">Cancel</button><button class="btn-p" id="ao-save-btn" onclick="saveAdminOrder()">Save Order</button></div>
+</div></div>
+
+<!-- EDIT ORDER MODAL -->
+<div class="mo" id="mo-edit-order"><div class="md" style="width:580px">
+  <div class="mt">Edit Order</div>
+  <div style="font-size:13px;color:var(--text2);margin-bottom:14px" id="eo-merchant-name"></div>
+  <div id="eo-items-form"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-radius:var(--r);margin-top:8px;margin-bottom:12px">
+    <span style="font-size:13px;color:var(--text2)">Order Total</span>
+    <span style="font-size:16px;font-weight:800;font-family:'DM Mono',monospace" id="eo-total">Rs. 0</span>
+  </div>
+  <div class="fg">
+    <label class="fl">Payment Mode</label>
+    <select class="fi" id="eo-pay"><option value="cash">Cash</option><option value="upi">UPI / Online</option><option value="credit">Credit</option></select>
+  </div>
+  <div class="fg"><label class="fl">Note</label><input class="fi" type="text" id="eo-note" placeholder="Any note..."/></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-edit-order')">Cancel</button><button class="btn-p" onclick="saveEditOrder()">Save Changes</button></div>
+</div></div>
+
+<script>
+// ── DATA ──
+const STORAGE_KEYS = {
+  products:'mb_admin_skus',
+  merchants:'mb_admin_merchants',
+  orders:'mb_v4_orders',
+  expenses:'mb_v4_expenses',
+  stockEntries:'mb_stock_entries',
+  trays:'mb_tray_data',
+  openingBalance:'mb_opening_bal',
+  creditPayments:'mb_credit_payments',
+  legacyStock:'mb_v4_stock',
+};
+function readJSON(key, fallback){
+  try{
+    const raw=localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(_err){
+    return fallback;
+  }
+}
+function writeJSON(key, value){
+  localStorage.setItem(key, JSON.stringify(value));
+}
+let PRODUCTS = readJSON(STORAGE_KEYS.products, []);
+let MERCHANTS = readJSON(STORAGE_KEYS.merchants, []);
+let ORDERS = readJSON(STORAGE_KEYS.orders, []);
+let EXPENSES = readJSON(STORAGE_KEYS.expenses, []);
+let SE = readJSON(STORAGE_KEYS.stockEntries, {});
+let TRAYS = readJSON(STORAGE_KEYS.trays, {});
+let OPENING_BAL = readJSON(STORAGE_KEYS.openingBalance, {});
+let CREDIT_PAYMENTS = readJSON(STORAGE_KEYS.creditPayments, []);
+
+// ── STATE ──
+let curPage='dashboard', curFilter={type:'today',date:new Date()};
+let calView=new Date(), editProdId=null, editMerchId=null, activeInv=null, activeReport=null, revChart=null, editOrderId=null;
+// Admin add-order flow state
+let adminOrderMerchant=null, adminOrderSKUIdx=0, adminOrderItems={}, adminOrderPayMode='cash';
+let sharedSyncTimer=null;
+
+// ── UTILS ──
+function syncStateFromStorage(){
+  PRODUCTS = readJSON(STORAGE_KEYS.products, []);
+  MERCHANTS = readJSON(STORAGE_KEYS.merchants, []);
+  ORDERS = readJSON(STORAGE_KEYS.orders, []);
+  EXPENSES = readJSON(STORAGE_KEYS.expenses, []);
+  SE = readJSON(STORAGE_KEYS.stockEntries, {});
+  TRAYS = readJSON(STORAGE_KEYS.trays, {});
+  OPENING_BAL = readJSON(STORAGE_KEYS.openingBalance, {});
+  CREDIT_PAYMENTS = readJSON(STORAGE_KEYS.creditPayments, []);
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+function dk(d){
+  const date=d||new Date();
+  return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+}
+function parseDateKey(datekey){
+  const [y,m,d]=(datekey||'').split('-').map(Number);
+  return new Date(y,(m||1)-1,d||1);
+}
+function shiftDateKey(datekey, days){
+  const date=parseDateKey(datekey);
+  date.setDate(date.getDate()+days);
+  return dk(date);
+}
+function isSameLocalDay(value, date){
+  return new Date(value).toDateString()===date.toDateString();
+}
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function escapeXml(value){
+  return String(value??'').replace(/[<>&"']/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[ch]));
+}
+function sanitizeFilePart(value){
+  return String(value??'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'-');
+}
+function formatCurrency(value){
+  return `Rs. ${Number(value||0).toLocaleString('en-IN')}`;
+}
+function getOpeningBalanceRecord(datekey){
+  return OPENING_BAL[datekey]||null;
+}
+function getOpeningBalanceAmount(datekey){
+  return Number(getOpeningBalanceRecord(datekey)?.amount||0);
+}
+function getOpeningBalanceNote(datekey){
+  return (getOpeningBalanceRecord(datekey)?.note||'').trim();
+}
+function getOrderCreditPaid(order){
+  return Math.max(0, Math.min(Number(order.creditPaid ?? order.partialPaid ?? 0) || 0, Number(order.total)||0));
+}
+function getOrderOutstanding(order){
+  if(order.payment!=='credit') return 0;
+  return Math.max(0, (Number(order.total)||0) - getOrderCreditPaid(order));
+}
+function isDelivered(order){
+  return !!order.delivered;
+}
+function getDeliveryLabel(order){
+  return isDelivered(order)?'Delivered':'In Transit';
+}
+function getDeliveryBadgeClass(order){
+  return isDelivered(order)?'bg':'bb';
+}
+function getMerchantOutstandingBeforeDate(merchantId, datekey){
+  const cutoff=parseDateKey(datekey);
+  return ORDERS.filter(o=>o.merchantId===merchantId && o.type!=='retail' && new Date(o.time)<cutoff)
+    .reduce((sum,o)=>sum+getOrderOutstanding(o),0);
+}
+function getReceivedQty(datekey, skuId){
+  return Number((SE[datekey]||{})[skuId]||0);
+}
+function getSoldQty(datekey, skuId, excludeOrderId=null){
+  const targetDate=parseDateKey(datekey);
+  return ORDERS.filter(o=>isSameLocalDay(o.time,targetDate) && (!excludeOrderId || o.id!==excludeOrderId))
+    .reduce((sum,o)=>sum+o.items.filter(it=>it.skuId===skuId).reduce((sub,it)=>{
+      const base=Number(it.qty)||0;
+      const replacement=it.rep&&it.rep.type==='replace' ? (Number(it.rep.qty)||0) : 0;
+      return sub+base+replacement;
+    },0),0);
+}
+function getAvailableQty(datekey, skuId, excludeOrderId=null){
+  return Math.max(0, getReceivedQty(datekey, skuId) - getSoldQty(datekey, skuId, excludeOrderId));
+}
+function validateStockAvailability(requestedItems, datekey, excludeOrderId=null){
+  const issues=[];
+  Object.entries(requestedItems).forEach(([skuId, qty])=>{
+    if(!qty) return;
+    const product=PRODUCTS.find(p=>p.id===skuId);
+    const available=getAvailableQty(datekey, skuId, excludeOrderId);
+    if(qty>available) issues.push(`${product?.name||skuId}: only ${available} available`);
+  });
+  return issues;
+}
+function persistOrders(){ writeJSON(STORAGE_KEYS.orders, ORDERS); }
+function persistExpenses(){ writeJSON(STORAGE_KEYS.expenses, EXPENSES); }
+function persistStockEntries(){ writeJSON(STORAGE_KEYS.stockEntries, SE); }
+function persistTrays(){ writeJSON(STORAGE_KEYS.trays, TRAYS); }
+function persistProducts(){ writeJSON(STORAGE_KEYS.products, PRODUCTS); }
+function persistMerchants(){ writeJSON(STORAGE_KEYS.merchants, MERCHANTS); }
+function persistOpeningBalance(){ writeJSON(STORAGE_KEYS.openingBalance, OPENING_BAL); }
+function persistCreditPayments(){ writeJSON(STORAGE_KEYS.creditPayments, CREDIT_PAYMENTS); }
+function persistLegacyStock(value){ writeJSON(STORAGE_KEYS.legacyStock, value); }
+function inferLegacyStockFromEntries(){
+  const latestDate=Object.keys(SE).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort().pop();
+  if(!latestDate) return {};
+  const map={};
+  PRODUCTS.forEach(product=>{
+    map[product.id]=getAvailableQty(latestDate, product.id);
+  });
+  return map;
+}
+function normalizeImportedDataset(payload){
+  const data=payload?.dataset||payload;
+  if(!data || typeof data!=='object') throw new Error('Dataset root must be a JSON object.');
+  const products=Array.isArray(data.products)?data.products:[];
+  const merchants=Array.isArray(data.merchants)?data.merchants:[];
+  const orders=Array.isArray(data.orders)?data.orders:[];
+  const expenses=Array.isArray(data.expenses)?data.expenses:[];
+  const creditPayments=Array.isArray(data.creditPayments)?data.creditPayments:[];
+  const stockEntries=data.stockEntries&&typeof data.stockEntries==='object' ? data.stockEntries : {};
+  const trays=data.trays&&typeof data.trays==='object' ? data.trays : {};
+  const openingBalance=data.openingBalance&&typeof data.openingBalance==='object' ? data.openingBalance : {};
+  if(!products.length) throw new Error('Dataset must include at least one product.');
+  if(!merchants.length) throw new Error('Dataset must include at least one merchant.');
+  return {
+    products,
+    merchants,
+    orders,
+    expenses,
+    creditPayments,
+    stockEntries,
+    trays,
+    openingBalance,
+  };
+}
+function applyImportedDataset(dataset){
+  PRODUCTS=dataset.products;
+  MERCHANTS=dataset.merchants;
+  ORDERS=dataset.orders;
+  EXPENSES=dataset.expenses;
+  SE=dataset.stockEntries;
+  TRAYS=dataset.trays;
+  OPENING_BAL=dataset.openingBalance;
+  CREDIT_PAYMENTS=dataset.creditPayments;
+  persistProducts();
+  persistMerchants();
+  persistOrders();
+  persistExpenses();
+  persistStockEntries();
+  persistTrays();
+  persistOpeningBalance();
+  persistCreditPayments();
+  persistLegacyStock(inferLegacyStockFromEntries());
+  syncStateFromStorage();
+  renderCalGrid();
+  refresh();
+  renderProducts();
+  renderMerchants();
+  renderInvoices();
+}
+function migrateLegacyData(){
+  let changed=false;
+  ORDERS=ORDERS.map(order=>{
+    const next={...order};
+    if(typeof next.partialPaid!=='undefined' && typeof next.creditPaid==='undefined'){
+      next.creditPaid=Number(next.partialPaid)||0;
+      delete next.partialPaid;
+      changed=true;
+    }
+    if(next.payment==='credit' && getOrderOutstanding(next)<=0){
+      next.payment=next.lastCreditPaymentMode||'cash';
+      changed=true;
+    }
+    if(typeof next.delivered==='undefined'){
+      next.delivered=false;
+      changed=true;
+    }
+    return next;
+  });
+  if(changed) persistOrders();
+}
+migrateLegacyData();
+function filterItems(arr){
+  const f=curFilter;
+  return arr.filter(o=>{
+    const d=new Date(o.time);
+    if(f.type==='today') return d.toDateString()===new Date().toDateString();
+    if(f.type==='single') return d.toDateString()===f.date.toDateString();
+    if(f.type==='week'){ const w=new Date(); w.setDate(w.getDate()-6); w.setHours(0,0,0,0); return d>=w; }
+    if(f.type==='month'){ const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth(); }
+    return true;
+  });
+}
+function calLabel(){
+  const f=curFilter;
+  if(f.type==='today') return 'Today';
+  if(f.type==='week') return 'This Week';
+  if(f.type==='month') return 'This Month';
+  if(f.type==='all') return 'All Time';
+  return f.date.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+}
+
+// ── CALENDAR ──
+function toggleCal(){ document.getElementById('cal-drop').classList.toggle('open'); renderCalGrid(); }
+function closeCal(){ document.getElementById('cal-drop').classList.remove('open'); }
+document.addEventListener('click',e=>{ if(!document.getElementById('cal-wrap').contains(e.target)) closeCal(); });
+function calMove(d){ calView=new Date(calView.getFullYear(),calView.getMonth()+d,1); renderCalGrid(); }
+function renderCalGrid(){
+  const y=calView.getFullYear(), m=calView.getMonth();
+  document.getElementById('cal-month').textContent=new Date(y,m,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), today=new Date();
+  const dataDays=new Set([...ORDERS,...EXPENSES].map(o=>dk(new Date(o.time))));
+  let h='';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>h+=`<div class="cal-dh">${d}</div>`);
+  for(let i=0;i<first;i++) h+=`<div class="cal-d cal-empty"></div>`;
+  for(let day=1;day<=dim;day++){
+    const d=new Date(y,m,day), dkey=dk(d);
+    const isTod=d.toDateString()===today.toDateString();
+    const isSel=curFilter.type==='single'&&dk(curFilter.date)===dkey;
+    const hasData=dataDays.has(dkey)||SE[dkey];
+    h+=`<div class="cal-d${isTod?' cal-today':''}${isSel?' cal-sel':''}${hasData?' cal-has':''}" onclick="pickDay(${y},${m},${day})">${day}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=h;
+}
+function pickDay(y,m,day){
+  curFilter={type:'single',date:new Date(y,m,day)};
+  document.getElementById('cal-label').textContent=calLabel();
+  document.querySelectorAll('.cal-pre').forEach(p=>p.classList.remove('active'));
+  renderCalGrid(); closeCal(); refresh();
+}
+function setPreset(p){
+  curFilter={type:p,date:new Date()};
+  document.getElementById('cal-label').textContent=calLabel();
+  document.querySelectorAll('.cal-pre').forEach(el=>el.classList.remove('active'));
+  event.target.classList.add('active');
+  calView=new Date(); renderCalGrid(); closeCal(); refresh();
+}
+
+// ── SIDEBAR MOBILE ──
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sb-overlay');
+  sb.classList.toggle('mob-open');
+  ov.classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('mob-open');
+  document.getElementById('sb-overlay').classList.remove('open');
+}
+
+// ── NAV ──
+function navTo(page,el){
+  // Ensure we always operate on the .nav-item, even if a child element (SVG, text) was clicked
+  const navEl = el.closest ? el.closest('.nav-item') : el;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navEl) navEl.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const target = document.getElementById('page-'+page);
+  if(target) target.classList.add('active');
+  curPage=page;
+  const titles={dashboard:'Dashboard',live:'Live Orders',dailystock:'Daily Stock',expenses:'Expenses',dsr:'Daily Sales Report',reports:'Reports',invoices:'Invoices',products:'Products',merchants:'Merchants'};
+  document.getElementById('page-title').textContent=titles[page]||page;
+  // Close sidebar on mobile after navigation
+  closeSidebar();
+  refresh();
+}
+function refresh(){
+  if(curPage==='dashboard') renderDashboard();
+  else if(curPage==='live') renderLive();
+  else if(curPage==='dailystock') renderDailyStock();
+  else if(curPage==='expenses') renderExpenses();
+  else if(curPage==='dsr') renderDSR();
+  else if(curPage==='reports'&&activeReport) showReport(activeReport);
+  else if(curPage==='invoices') renderInvoices();
+  else if(curPage==='products') renderProducts();
+  else if(curPage==='merchants') renderMerchants();
+}
+function refreshSharedState(){
+  syncStateFromStorage();
+  refresh();
+  renderProducts();
+  renderMerchants();
+  if(curPage==='invoices') renderInvoices();
+}
+
+// ── DASHBOARD ──
+function renderDashboard(){
+  const ords=filterItems(ORDERS), exps=filterItems(EXPENSES);
+  const rev=ords.reduce((s,o)=>s+o.total,0);
+  const cogs=ords.reduce((s,o)=>s+o.items.reduce((ss,it)=>{const p=PRODUCTS.find(x=>x.id===it.skuId);return ss+(it.qty*(p?p.cost:0));},0),0);
+  const totalExp=exps.reduce((s,e)=>s+e.amount,0);
+  const gp=rev-cogs, np=gp-totalExp;
+  const cords=ords.filter(o=>getOrderOutstanding(o)>0), camt=cords.reduce((s,o)=>s+getOrderOutstanding(o),0);
+  document.getElementById('d-rev').textContent=`Rs. ${rev.toLocaleString('en-IN')}`;
+  document.getElementById('d-rev-sub').textContent=`${ords.length} orders`;
+  const pe=document.getElementById('d-profit');
+  pe.textContent=`${np<0?'− ':''}Rs. ${Math.abs(np).toLocaleString('en-IN')}`;
+  pe.style.color=np<0?'var(--red)':'var(--green)';
+  document.getElementById('d-credit').textContent=`Rs. ${camt.toLocaleString('en-IN')}`;
+  document.getElementById('d-credit-sub').textContent=`${cords.length} unpaid`;
+  document.getElementById('d-exp').textContent=`Rs. ${totalExp.toLocaleString('en-IN')}`;
+  const datekey=curFilter.type==='single' ? dk(curFilter.date) : dk();
+  const balanceDate=parseDateKey(datekey);
+  const opening=getOpeningBalanceAmount(datekey);
+  const openingNote=getOpeningBalanceNote(datekey);
+  const collected=ORDERS.filter(o=>isSameLocalDay(o.time,balanceDate) && o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+  const recoveries=CREDIT_PAYMENTS.filter(p=>isSameLocalDay(p.time,balanceDate)).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const dayExpenses=EXPENSES.filter(e=>isSameLocalDay(e.time,balanceDate)).reduce((s,e)=>s+e.amount,0);
+  const closing=opening+collected+recoveries-dayExpenses;
+  document.getElementById('d-opening').textContent=`Rs. ${opening.toLocaleString('en-IN')}`;
+  document.getElementById('d-open-sub').textContent=openingNote || `Morning entry for ${balanceDate.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`;
+  const ce=document.getElementById('d-closing');
+  ce.textContent=`Rs. ${closing.toLocaleString('en-IN')}`;
+  ce.style.color=closing<0?'var(--red)':'var(--text)';
+  renderRevChart(); renderProdPerf(ords); renderPL(rev,cogs,totalExp,gp,np);
+}
+function renderRevChart(){
+  const labels=[],data=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);labels.push(d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}));data.push(ORDERS.filter(o=>new Date(o.time).toDateString()===d.toDateString()).reduce((s,o)=>s+o.total,0));}
+  const ctx=document.getElementById('chart-rev').getContext('2d');
+  if(revChart) revChart.destroy();
+  revChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:'#0f0f0f',borderRadius:6,borderSkipped:false}]},options:{responsive:true,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Rs. ${c.raw}`}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Bricolage Grotesque',size:11},color:'#999'}},y:{grid:{color:'#f0f0ee'},ticks:{font:{family:'Bricolage Grotesque',size:11},color:'#999',callback:v=>`Rs.${v}`}}}}});
+}
+function renderProdPerf(ords){
+  const map={};
+  ords.forEach(o=>o.items.forEach(it=>{if(!map[it.skuId])map[it.skuId]={name:it.skuName,qty:0,rev:0};map[it.skuId].qty+=it.qty;map[it.skuId].rev+=it.amount;}));
+  document.getElementById('prod-perf').innerHTML=Object.entries(map).sort((a,b)=>b[1].rev-a[1].rev).map(([pid,d])=>{const p=PRODUCTS.find(x=>x.id===pid);const m=p?((p.sale-p.cost)/p.sale*100).toFixed(1):'-';return `<tr><td>${d.name}</td><td class="mono">${d.qty}</td><td class="mono">Rs.${d.rev.toLocaleString('en-IN')}</td><td>${m}%</td></tr>`;}).join('')||`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">No data</td></tr>`;
+}
+function renderPL(rev,cogs,exp,gp,np){
+  document.getElementById('pl-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">Gross Revenue</span><span class="pl-val" style="color:var(--green)">Rs. ${rev.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Cost of Goods Sold</span><span class="pl-val" style="color:var(--red)">− Rs. ${cogs.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Gross Profit</span><span class="pl-val">Rs. ${gp.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Agent Expenses</span><span class="pl-val" style="color:var(--red)">− Rs. ${exp.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row pl-total"><span class="pl-label">${np<0?'Net Loss':'Net Profit'}</span><span class="pl-val" style="color:${np<0?'var(--red)':'var(--green)'}">Rs. ${Math.abs(np).toLocaleString('en-IN')}</span></div>`;
+}
+
+// ── LIVE ORDERS ──
+function renderLive(){
+  const ords=filterItems(ORDERS).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  const feed=document.getElementById('live-feed');
+  if(!ords.length){feed.innerHTML=`<div class="empty"><div class="empty-title">No orders</div></div>`;return;}
+  const pm={cash:'bg',upi:'bb',credit:'ba'}, pl={cash:'Cash',upi:'UPI',credit:'Credit'};
+  feed.innerHTML=ords.map(o=>{const t=new Date(o.time);
+    const isRetail=o.type==='retail';
+    return `<div class="feed-item">
+    <div class="fdot${o.payment==='credit'?' cr':isRetail?' ':''}"></div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px">${isRetail?'<span style="font-size:11px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);padding:2px 8px;border-radius:20px;font-weight:600">Retail</span>':''}${o.merchantName}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} · ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})} · ${o.items.length} item${o.items.length>1?'s':''}</div>
+      <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="badge ${pm[o.payment]}">${pl[o.payment]}</span>
+        ${isDelivered(o)?`<span class="badge ${getDeliveryBadgeClass(o)}">${getDeliveryLabel(o)}</span>`:''}
+        ${!isRetail?`<select class="ps" onchange="updOrdPay('${o.id}',this.value)">
+          <option value="cash"${o.payment==='cash'?' selected':''}>Cash</option>
+          <option value="upi"${o.payment==='upi'?' selected':''}>UPI</option>
+          <option value="credit"${o.payment==='credit'?' selected':''}>Credit</option>
+        </select>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);font-weight:600;cursor:pointer">
+          <input type="checkbox" ${isDelivered(o)?'checked':''} onchange="updOrdDelivered('${o.id}',this.checked)"/>
+          Delivered
+        </label>`:''}
+      </div>
+    </div>
+    <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <div style="font-size:15px;font-weight:700">Rs. ${o.total.toLocaleString('en-IN')}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-s sm" onclick="openInvModal('${o.id}')">View</button>
+        <button class="btn-s sm" onclick="openEditOrder('${o.id}')">Edit</button>
+      </div>
+    </div>
+  </div>`;}).join('');
+}
+
+// ── RETAIL SALE ──
+let retailPayMode='cash';
+function openRetailSale(){
+  if(!PRODUCTS.length){alert('No products configured yet.');return;}
+  document.getElementById('retail-prods').innerHTML=PRODUCTS.map(p=>`
+    <div class="osku-row">
+      <span class="osku-name">${p.name}</span>
+      <span class="osku-price">Rs.${p.retail||p.sale}/pc</span>
+      <input class="oqty" type="number" id="rq-${p.id}" value="0" min="0" oninput="calcRetailTotal()"/>
+      <span class="osub" id="rs-${p.id}">Rs. 0</span>
+    </div>`).join('');
+  document.getElementById('retail-total').textContent='Rs. 0';
+  document.getElementById('retail-note').value='';
+  setRetailPay('cash');
+  document.getElementById('mo-retail').classList.add('open');
+}
+function setRetailPay(m){
+  retailPayMode=m;
+  ['cash','upi'].forEach(x=>{
+    const btn=document.getElementById('rpay-'+x);
+    btn.style.background=x===m?'var(--text)':'';
+    btn.style.color=x===m?'#fff':'';
+    btn.style.borderColor=x===m?'var(--text)':'';
+  });
+}
+function calcRetailTotal(){
+  let t=0;
+  PRODUCTS.forEach(p=>{
+    const q=parseInt(document.getElementById('rq-'+p.id)?.value||0)||0;
+    const price=p.retail||p.sale;
+    const s=q*price; t+=s;
+    const el=document.getElementById('rs-'+p.id);
+    if(el)el.textContent=`Rs.${s}`;
+  });
+  document.getElementById('retail-total').textContent=`Rs. ${t.toLocaleString('en-IN')}`;
+}
+function saveRetailSale(){
+  const items=[];let total=0;
+  PRODUCTS.forEach(p=>{
+    const q=parseInt(document.getElementById('rq-'+p.id)?.value||0)||0;
+    if(q>0){const price=p.retail||p.sale;const amt=q*price;items.push({skuId:p.id,skuName:p.name,qty:q,price,amount:amt,rep:null});total+=amt;}
+  });
+  if(!items.length){alert('Add at least one item');return;}
+  const requested=Object.fromEntries(items.map(it=>[it.skuId,it.qty]));
+  const issues=validateStockAvailability(requested, dk());
+  if(issues.length){alert(`Stock not available:\n${issues.join('\n')}`);return;}
+  const note=document.getElementById('retail-note').value.trim();
+  const order={id:'RET-'+Date.now(),merchantId:'retail',merchantName:'Retail Customer',type:'retail',items,total,payment:retailPayMode,note,delivered:false,time:new Date().toISOString()};
+  ORDERS.unshift(order);persistOrders();
+  closeModal('mo-retail');renderLive();renderDashboard();renderInvoices();
+}
+function updOrdPay(id,mode){
+  const i=ORDERS.findIndex(o=>o.id===id);if(i<0)return;
+  ORDERS[i].payment=mode;
+  ORDERS[i].creditPaid=mode==='credit' ? 0 : ORDERS[i].total;
+  persistOrders();
+  renderLive();renderDashboard();renderInvoices();
+}
+function updOrdDelivered(id,delivered){
+  const i=ORDERS.findIndex(o=>o.id===id);if(i<0)return;
+  ORDERS[i].delivered=!!delivered;
+  persistOrders();
+  renderLive();renderDashboard();renderInvoices();
+}
+
+// ── ADD ORDER (agent-like flow) ──
+function openAddOrder(){
+  adminOrderMerchant=null; adminOrderSKUIdx=0; adminOrderItems={}; adminOrderPayMode='cash';
+  document.getElementById('ao-merch-search').value='';
+  filterAOMerchants();
+  document.getElementById('mo-order-merch').classList.add('open');
+}
+function filterAOMerchants(){
+  const q=(document.getElementById('ao-merch-search').value||'').toLowerCase();
+  const list=document.getElementById('ao-merch-list');
+  if(!MERCHANTS.length){list.innerHTML=`<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No merchants added yet</div>`;return;}
+  const filtered=MERCHANTS.filter(m=>m.name.toLowerCase().includes(q)||(m.area||'').toLowerCase().includes(q));
+  list.innerHTML=filtered.map(m=>`<div onclick="selectAOMerchant('${m.id}')" style="padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .1s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+    <div><div style="font-weight:600;font-size:13px">${m.name}</div><div style="font-size:11px;color:var(--text2)">${m.area||''}</div></div>
+    <svg width="14" height="14" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </div>`).join('');
+}
+function selectAOMerchant(id){
+  adminOrderMerchant=MERCHANTS.find(m=>m.id===id);
+  adminOrderSKUIdx=0; adminOrderItems={};
+  closeModal('mo-order-merch');
+  openAOSku(0);
+}
+function openMerchantPickerAO(){
+  closeAOSku();
+  document.getElementById('mo-order-merch').classList.add('open');
+}
+function openAOSku(idx){
+  if(!PRODUCTS.length){alert('No products configured yet. Add products first.');return;}
+  adminOrderSKUIdx=idx;
+  const p=PRODUCTS[idx];
+  document.getElementById('ao-sku-title').textContent=`SKU ${idx+1} of ${PRODUCTS.length}`;
+  document.getElementById('ao-sku-merchant-name').textContent=adminOrderMerchant.name;
+  document.getElementById('ao-sku-prog').style.width=`${((idx+1)/PRODUCTS.length)*100}%`;
+  document.getElementById('ao-sku-name').textContent=p.name;
+  document.getElementById('ao-sku-price').textContent=`Rs. ${p.sale} / piece`;
+  document.getElementById('ao-qty').value=adminOrderItems[p.id]||0;
+  calcAOSub();
+  document.getElementById('ao-prev-btn').disabled=idx===0;
+  document.getElementById('ao-next-btn').textContent=idx===PRODUCTS.length-1?'Review →':'Next →';
+  document.getElementById('mo-order-sku').classList.add('open');
+}
+function closeAOSku(){closeModal('mo-order-sku');}
+function adjAOQty(d){
+  const el=document.getElementById('ao-qty');
+  el.value=Math.max(0,(parseInt(el.value||0)||0)+d);
+  calcAOSub();
+}
+function calcAOSub(){
+  const p=PRODUCTS[adminOrderSKUIdx];
+  const q=parseInt(document.getElementById('ao-qty').value||0)||0;
+  document.getElementById('ao-sub').textContent=`Rs. ${(q*p.sale).toLocaleString('en-IN')}`;
+}
+function saveAOQty(){
+  const p=PRODUCTS[adminOrderSKUIdx];
+  const q=parseInt(document.getElementById('ao-qty').value||0)||0;
+  if(q>0) adminOrderItems[p.id]=q; else delete adminOrderItems[p.id];
+}
+function aoSkuPrev(){saveAOQty();closeAOSku();openAOSku(adminOrderSKUIdx-1);}
+function aoSkuNext(){
+  saveAOQty();
+  if(adminOrderSKUIdx<PRODUCTS.length-1){closeAOSku();openAOSku(adminOrderSKUIdx+1);}
+  else{closeAOSku();openAOReview();}
+}
+function openAOReview(){
+  document.getElementById('ao-review-mname').textContent=adminOrderMerchant.name;
+  let total=0,html='';
+  PRODUCTS.forEach(p=>{
+    const q=adminOrderItems[p.id]||0;
+    if(q>0){const amt=q*p.sale;total+=amt;html+=`<div class="osku-row"><span class="osku-name">${p.name}</span><span style="font-size:12px;color:var(--text2)">${q} × Rs.${p.sale}</span><span class="osub">Rs.${amt.toLocaleString('en-IN')}</span></div>`;}
+  });
+  if(!html) html=`<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px">No items selected</div>`;
+  document.getElementById('ao-review-items').innerHTML=html;
+  document.getElementById('ao-review-total').textContent=`Rs. ${total.toLocaleString('en-IN')}`;
+  document.getElementById('ao-review-note').value='';
+  setAOPay(adminOrderPayMode);
+  document.getElementById('mo-order-review').classList.add('open');
+}
+function setAOPay(mode){
+  adminOrderPayMode=mode;
+  ['cash','upi','credit'].forEach(m=>{
+    const btn=document.getElementById('aopay-'+m);
+    btn.style.background=m===mode?'var(--text)':'';
+    btn.style.color=m===mode?'#fff':'';
+    btn.style.borderColor=m===mode?'var(--text)':'';
+  });
+}
+function saveAdminOrder(){
+  const items=[];let total=0;
+  PRODUCTS.forEach(p=>{const q=adminOrderItems[p.id]||0;if(q>0){const amt=q*p.sale;items.push({skuId:p.id,skuName:p.name,qty:q,price:p.sale,amount:amt,rep:null});total+=amt;}});
+  if(!items.length){alert('Add at least one product');return;}
+  const issues=validateStockAvailability(adminOrderItems, dk());
+  if(issues.length){alert(`Stock not available:\n${issues.join('\n')}`);return;}
+  const note=document.getElementById('ao-review-note').value.trim();
+  const order={id:'ORD-'+Date.now(),merchantId:adminOrderMerchant.id,merchantName:adminOrderMerchant.name,items,total,payment:adminOrderPayMode,note,delivered:false,time:new Date().toISOString()};
+  if(adminOrderPayMode!=='credit') order.creditPaid=order.total;
+  ORDERS.unshift(order);persistOrders();
+  closeModal('mo-order-review');renderLive();renderDashboard();renderInvoices();
+}
+
+// ── EDIT ORDER ──
+function openEditOrder(id){
+  editOrderId=id;
+  const o=ORDERS.find(x=>x.id===id);if(!o)return;
+  document.getElementById('eo-merchant-name').textContent=`${o.merchantName} · ${new Date(o.time).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}`;
+  // Build editable item rows for each product in the order
+  document.getElementById('eo-items-form').innerHTML=o.items.map(it=>`
+    <div class="osku-row">
+      <span class="osku-name">${it.skuName}</span>
+      <span class="osku-price">Rs.${it.price}/pc</span>
+      <input class="oqty" type="number" id="eoq-${it.skuId}" value="${it.qty}" min="0" oninput="calcEOTotal('${id}')"/>
+      <span class="osub" id="eos-${it.skuId}">Rs.${it.amount.toLocaleString('en-IN')}</span>
+    </div>`).join('');
+  document.getElementById('eo-pay').value=o.payment;
+  document.getElementById('eo-note').value=o.note||'';
+  calcEOTotal(id);
+  document.getElementById('mo-edit-order').classList.add('open');
+}
+function calcEOTotal(id){
+  const o=ORDERS.find(x=>x.id===id);if(!o)return;
+  let t=0;
+  o.items.forEach(it=>{
+    const q=parseInt(document.getElementById('eoq-'+it.skuId)?.value||0)||0;
+    const amt=q*it.price;t+=amt;
+    const el=document.getElementById('eos-'+it.skuId);
+    if(el)el.textContent=`Rs.${amt.toLocaleString('en-IN')}`;
+  });
+  document.getElementById('eo-total').textContent=`Rs. ${t.toLocaleString('en-IN')}`;
+}
+function saveEditOrder(){
+  const o=ORDERS.find(x=>x.id===editOrderId);if(!o)return;
+  const prevPayment=o.payment;
+  let total=0;
+  o.items=o.items.map(it=>{
+    const q=parseInt(document.getElementById('eoq-'+it.skuId)?.value||0)||0;
+    const amt=q*it.price;total+=amt;
+    return {...it,qty:q,amount:amt};
+  }).filter(it=>it.qty>0);
+  if(!o.items.length){alert('Order must have at least one item');return;}
+  const requested=Object.fromEntries(o.items.map(it=>[it.skuId,it.qty]));
+  const orderDateKey=dk(new Date(o.time));
+  const issues=validateStockAvailability(requested, orderDateKey, o.id);
+  if(issues.length){alert(`Stock not available:\n${issues.join('\n')}`);return;}
+  o.total=total;
+  o.payment=document.getElementById('eo-pay').value;
+  if(o.payment!=='credit') o.creditPaid=o.total;
+  else o.creditPaid=prevPayment==='credit' ? Math.min(getOrderCreditPaid(o),o.total) : 0;
+  o.note=document.getElementById('eo-note').value.trim();
+  persistOrders();
+  closeModal('mo-edit-order');renderLive();renderDashboard();renderInvoices();
+}
+function calcAO(){
+  let t=0;PRODUCTS.forEach(p=>{const q=parseInt(document.getElementById('aoq-'+p.id)?.value||0)||0;const s=q*p.sale;t+=s;const el=document.getElementById('aos-'+p.id);if(el)el.textContent=`Rs.${s}`;});
+  if(document.getElementById('ao-total'))document.getElementById('ao-total').textContent=`Rs. ${t.toLocaleString('en-IN')}`;
+}
+
+// ── DAILY STOCK ──
+function renderDailyStock(){
+  const datekey=curFilter.type==='single'?dk(curFilter.date):dk();
+  document.getElementById('se-title').textContent='Daily Stock Entry — '+new Date(datekey+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  const saved=SE[datekey]||{}, tray=TRAYS[datekey]||{};
+  document.getElementById('tray-empty').value=tray.empty||'';
+  document.getElementById('tray-full').value=tray.full||'';
+  document.getElementById('se-form').innerHTML=PRODUCTS.map(p=>`<div class="se-card"><div class="se-name">${p.name}</div><div class="se-sub">Purchase: Rs.${p.cost}/unit</div><input class="se-inp" type="number" id="se-${p.id}" value="${saved[p.id]||''}" min="0" placeholder="0" oninput="calcBill()"/></div>`).join('');
+  calcBill();
+  // history
+  const hist=Object.entries(SE).filter(([k])=>k.match(/^\d{4}-\d{2}-\d{2}$/)).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,14);
+  if(!hist.length){document.getElementById('se-history').innerHTML=`<div class="empty"><div class="empty-title">No entries yet</div></div>`;return;}
+  document.getElementById('se-history').innerHTML=`<table class="dt"><thead><tr><th>Date</th>${PRODUCTS.map(p=>`<th style="font-size:10px">${p.name.split(' ')[0]}</th>`).join('')}<th>Bill Value</th><th>Empty Trays</th><th>Full Trays</th></tr></thead><tbody>`+
+    hist.map(([k,e])=>{
+      const bill=PRODUCTS.reduce((s,p)=>s+(e[p.id]||0)*p.cost,0);
+      const tr=TRAYS[k]||{};
+      return `<tr><td style="font-size:12px">${new Date(k+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>${PRODUCTS.map(p=>`<td class="mono">${e[p.id]||'—'}</td>`).join('')}<td class="mono" style="color:var(--green);font-weight:600">Rs.${bill.toLocaleString('en-IN')}</td><td class="mono">${tr.empty||'—'}</td><td class="mono">${tr.full||'—'}</td></tr>`;
+    }).join('')+`</tbody></table>`;
+}
+function calcBill(){
+  const datekey=curFilter.type==='single'?dk(curFilter.date):dk();
+  let bill=0, totalRecv=0;
+  PRODUCTS.forEach(p=>{const q=parseInt(document.getElementById('se-'+p.id)?.value||0)||0;bill+=q*p.cost;totalRecv+=q;});
+  document.getElementById('bill-val').textContent=`Rs. ${bill.toLocaleString('en-IN')}`;
+
+  // Closing stock = received today - sold today (from orders on the selected date)
+  const dayOrds=ORDERS.filter(o=>new Date(o.time).toDateString()===new Date(datekey+'T00:00:00').toDateString());
+  let totalSold=0;
+  const rows=PRODUCTS.map(p=>{
+    const recv=parseInt(document.getElementById('se-'+p.id)?.value||0)||0;
+    const sold=dayOrds.reduce((s,o)=>s+o.items.filter(it=>it.skuId===p.id).reduce((ss,it)=>ss+(Number(it.qty)||0)+(it.rep&&it.rep.type==='replace'?(Number(it.rep.qty)||0):0),0),0);
+    totalSold+=sold;
+    const closing=recv-sold;
+    const cls=closing<0?'color:var(--red)':closing===0?'color:var(--text3)':'color:var(--green)';
+    return `<tr><td style="font-weight:500">${p.name}</td><td class="mono">${recv||'—'}</td><td class="mono" style="color:var(--amber)">${sold||'—'}</td><td class="mono;font-weight:600" style="${cls}">${closing}</td></tr>`;
+  });
+  document.getElementById('se-units-recv') && (document.getElementById('se-units-recv').textContent=totalRecv||'—');
+  document.getElementById('se-units-sold') && (document.getElementById('se-units-sold').textContent=totalSold||'—');
+  if(document.getElementById('se-closing-table')){
+    document.getElementById('se-closing-table').innerHTML=PRODUCTS.length
+      ?`<table class="dt"><thead><tr><th>Product</th><th>Received</th><th>Sold</th><th>Closing</th></tr></thead><tbody>${rows.join('')}</tbody></table>`
+      :`<div class="empty"><div class="empty-title">No products configured</div></div>`;
+  }
+}
+function saveStockEntry(){
+  const datekey=curFilter.type==='single'?dk(curFilter.date):dk();
+  if(!SE[datekey])SE[datekey]={};
+  PRODUCTS.forEach(p=>{
+    const v=parseInt(document.getElementById('se-'+p.id)?.value||0)||0;
+    if(v>0) SE[datekey][p.id]=v;
+    else delete SE[datekey][p.id];
+  });
+  persistStockEntries();
+  saveTray();renderDailyStock();renderDashboard();
+  alert('Stock entry saved for '+new Date(datekey+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+}
+function saveTray(){
+  const datekey=curFilter.type==='single'?dk(curFilter.date):dk();
+  TRAYS[datekey]={empty:parseInt(document.getElementById('tray-empty')?.value||0)||0,full:parseInt(document.getElementById('tray-full')?.value||0)||0};
+  persistTrays();
+}
+
+// ── EXPENSES ──
+function renderExpenses(){
+  const exps=filterItems(EXPENSES),ords=filterItems(ORDERS);
+  const t=exps.reduce((s,e)=>s+e.amount,0),r=ords.reduce((s,o)=>s+o.total,0),n=r-t;
+  document.getElementById('exp-total').textContent=`Rs. ${t.toLocaleString('en-IN')}`;
+  document.getElementById('exp-rev').textContent=`Rs. ${r.toLocaleString('en-IN')}`;
+  const ne=document.getElementById('exp-net');
+  ne.textContent=`${n<0?'− ':''}Rs. ${Math.abs(n).toLocaleString('en-IN')}`;
+  ne.style.color=n<0?'var(--red)':'var(--green)';
+  document.getElementById('exp-body').innerHTML=exps.length?exps.map(e=>{const t=new Date(e.time);return `<tr><td style="font-weight:500">${e.desc}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td class="mono" style="color:var(--red);font-weight:600">Rs.${e.amount}</td><td><button class="btn-d sm" onclick="delExpense('${e.id}')">Delete</button></td></tr>`;}).join(''):`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">No expenses</td></tr>`;
+}
+function openExpenseModal(){
+  document.getElementById('exp-desc-inp').value='';
+  document.getElementById('exp-amt-inp').value='';
+  document.getElementById('mo-expense').classList.add('open');
+}
+function saveExpenseFromAdmin(){
+  const desc=document.getElementById('exp-desc-inp').value.trim();
+  const amt=parseFloat(document.getElementById('exp-amt-inp').value);
+  if(!desc){alert('Enter a description');return;}
+  if(!amt||amt<=0){alert('Enter a valid amount');return;}
+  const exp={id:'EXP-'+Date.now(),desc,amount:amt,time:new Date().toISOString()};
+  EXPENSES.unshift(exp);
+  persistExpenses();
+  closeModal('mo-expense');renderExpenses();renderDashboard();
+}
+function delExpense(id){
+  if(!confirm('Delete this expense?'))return;
+  EXPENSES=EXPENSES.filter(e=>e.id!==id);
+  persistExpenses();
+  renderExpenses();renderDashboard();
+}
+
+// ── INVOICES ──
+function renderInvoices(){
+  const q=(document.getElementById('inv-search').value||'').toLowerCase();
+  const pf=document.getElementById('inv-pf').value;
+  let ords=filterItems(ORDERS).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(q)ords=ords.filter(o=>o.merchantName.toLowerCase().includes(q)||o.id.toLowerCase().includes(q));
+  if(pf)ords=ords.filter(o=>pf==='credit' ? getOrderOutstanding(o)>0 : o.payment===pf && getOrderOutstanding(o)===0);
+  const pm={cash:'bg',upi:'bb',credit:'ba'},pl={cash:'Cash',upi:'UPI',credit:'Credit'};
+  document.getElementById('inv-body').innerHTML=ords.length?ords.map(o=>{const t=new Date(o.time);const outstanding=getOrderOutstanding(o);return `<tr class="click" onclick="openInvModal('${o.id}')"><td class="mono" style="font-size:11px">${o.id}</td><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${o.items.length} item${o.items.length>1?'s':''}</td><td class="mono" style="font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td><span class="badge ${pm[o.payment]||'bg'}">${pl[o.payment]||o.payment}</span></td><td><span class="badge ${outstanding>0?'ba':'bg'}">${outstanding>0?`Pending ${formatCurrency(outstanding)}`:'Paid'}</span></td><td><button class="btn-s sm" onclick="event.stopPropagation();dlPDF('${o.id}')">PDF</button></td></tr>`;}).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No invoices</td></tr>`;
+}
+function openInvModal(id){
+  const o=ORDERS.find(x=>x.id===id);if(!o)return;
+  activeInv=o;const t=new Date(o.time);
+  document.getElementById('inv-mt').textContent=`${o.merchantName} — ${o.id}`;
+  const pl={cash:'Cash (Collected)',upi:'UPI / Online (Paid)',credit:'Credit (Collect Later)'};
+  document.getElementById('inv-mbody').innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:13px;color:var(--text2)"><span>${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span><span>${pl[o.payment]||o.payment}</span></div><table class="dt" style="margin-bottom:12px"><thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${o.items.map(it=>`<tr><td>${it.skuName}${it.rep?`<br><span style="font-size:11px;color:var(--text3)">${it.rep.type==='replace'?'Replacement: '+it.rep.qty+' swapped':'Deduct: −Rs.'+it.rep.deductAmt}</span>`:''}</td><td>${it.qty}</td><td>Rs.${it.price}</td><td style="font-weight:600">Rs.${it.amount}</td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--bg2);border-radius:var(--r)"><span style="font-size:13px;color:var(--text2)">Grand Total</span><span style="font-size:17px;font-weight:800">Rs.${o.total.toLocaleString('en-IN')}</span></div>${o.note?`<div style="margin-top:10px;font-size:12px;color:var(--text2)">Note: ${o.note}</div>`:''}`;
+  document.getElementById('mo-inv').classList.add('open');
+}
+function dlFromModal(){if(activeInv)dlPDF(activeInv.id);}
+
+// ── REPORTS ──
+function showReport(type){
+  activeReport=type;
+  document.getElementById('rdl-btn').style.display='inline-block';
+  const ords=filterItems(ORDERS),exps=filterItems(EXPENSES);
+  const names={daily:'Daily Summary',merchant:'Merchant-wise Sales',product:'Product Performance',pl:'P&L Statement',credit:'Credit Pending',expense:'Expense Report'};
+  document.getElementById('report-title').textContent=names[type];
+  let h='';
+  if(type==='daily'){
+    const bd={};ords.forEach(o=>{const k=new Date(o.time).toDateString();if(!bd[k])bd[k]={date:new Date(o.time),orders:0,rev:0,cash:0,upi:0,credit:0};bd[k].orders++;bd[k].rev+=o.total;bd[k][o.payment]+=o.total;});
+    h=`<table class="dt"><thead><tr><th>Date</th><th>Orders</th><th>Revenue</th><th>Cash</th><th>UPI</th><th>Credit</th></tr></thead><tbody>`+Object.values(bd).sort((a,b)=>b.date-a.date).map(d=>`<tr><td>${d.date.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})}</td><td>${d.orders}</td><td class="mono">Rs.${d.rev.toLocaleString('en-IN')}</td><td class="mono">Rs.${d.cash.toLocaleString('en-IN')}</td><td class="mono">Rs.${d.upi.toLocaleString('en-IN')}</td><td class="mono">Rs.${d.credit.toLocaleString('en-IN')}</td></tr>`).join('')+`</tbody></table>`;
+  }else if(type==='merchant'){
+    const map={};ords.forEach(o=>{if(!map[o.merchantId])map[o.merchantId]={name:o.merchantName,orders:0,rev:0};map[o.merchantId].orders++;map[o.merchantId].rev+=o.total;});
+    h=`<table class="dt"><thead><tr><th>Merchant</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>`+Object.values(map).sort((a,b)=>b.rev-a.rev).map(m=>`<tr><td style="font-weight:600">${m.name}</td><td>${m.orders}</td><td class="mono">Rs.${m.rev.toLocaleString('en-IN')}</td></tr>`).join('')+`</tbody></table>`;
+  }else if(type==='product'){
+    const map={};ords.forEach(o=>o.items.forEach(it=>{if(!map[it.skuId])map[it.skuId]={name:it.skuName,qty:0,rev:0};map[it.skuId].qty+=it.qty;map[it.skuId].rev+=it.amount;}));
+    h=`<table class="dt"><thead><tr><th>Product</th><th>Units Sold</th><th>Revenue</th><th>Margin %</th></tr></thead><tbody>`+Object.entries(map).sort((a,b)=>b[1].rev-a[1].rev).map(([pid,d])=>{const p=PRODUCTS.find(x=>x.id===pid);const m=p?((p.sale-p.cost)/p.sale*100).toFixed(1):'-';return `<tr><td style="font-weight:600">${d.name}</td><td class="mono">${d.qty}</td><td class="mono">Rs.${d.rev.toLocaleString('en-IN')}</td><td>${m}%</td></tr>`;}).join('')+`</tbody></table>`;
+  }else if(type==='pl'){
+    const rev=ords.reduce((s,o)=>s+o.total,0),cogs=ords.reduce((s,o)=>s+o.items.reduce((ss,it)=>{const p=PRODUCTS.find(x=>x.id===it.skuId);return ss+(it.qty*(p?p.cost:0));},0),0),exp=exps.reduce((s,e)=>s+e.amount,0),gp=rev-cogs,np=gp-exp;
+    h=`<div style="max-width:380px">`+[['Gross Revenue',rev,'var(--green)'],['Cost of Goods',`−${cogs.toLocaleString('en-IN')}`,'var(--red)'],['Gross Profit',gp,'var(--text)'],['Agent Expenses',`−${exp.toLocaleString('en-IN')}`,'var(--red)']].map(([l,v,c])=>`<div class="pl-row"><span class="pl-label">${l}</span><span class="pl-val" style="color:${c}">Rs.${typeof v==='number'?v.toLocaleString('en-IN'):v}</span></div>`).join('')+`<div class="pl-row pl-total"><span class="pl-label">${np<0?'Net Loss':'Net Profit'}</span><span class="pl-val" style="color:${np<0?'var(--red)':'var(--green)'}">Rs.${Math.abs(np).toLocaleString('en-IN')}</span></div></div>`;
+  }else if(type==='credit'){
+    const co=ords.filter(o=>getOrderOutstanding(o)>0);
+    h=`<table class="dt"><thead><tr><th>Merchant</th><th>Date</th><th>Outstanding</th><th>Invoice ID</th></tr></thead><tbody>`+(co.length?co.sort((a,b)=>new Date(b.time)-new Date(a.time)).map(o=>`<tr><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${new Date(o.time).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td><td class="mono" style="color:var(--amber);font-weight:700">${formatCurrency(getOrderOutstanding(o))}</td><td class="mono" style="font-size:11px">${o.id}</td></tr>`).join(''):`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:28px">No pending credit</td></tr>`)+`</tbody></table>`;
+  }else if(type==='expense'){
+    const t=exps.reduce((s,e)=>s+e.amount,0);
+    h=`<div style="margin-bottom:12px;font-size:14px">Total: <strong style="color:var(--red)">Rs.${t.toLocaleString('en-IN')}</strong></div><table class="dt"><thead><tr><th>Description</th><th>Date</th><th>Amount</th></tr></thead><tbody>`+(exps.length?exps.map(e=>`<tr><td>${e.desc}</td><td style="color:var(--text2);font-size:12px">${new Date(e.time).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td><td class="mono" style="color:var(--red)">Rs.${e.amount}</td></tr>`).join(''):`<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:28px">No expenses</td></tr>`)+`</tbody></table>`;
+  }
+  document.getElementById('report-content').innerHTML=h;
+}
+
+// ── DSR ──
+function getDSRDate(){
+  return curFilter.type==='single' ? curFilter.date : new Date();
+}
+function renderDSR(){
+  const date=getDSRDate();
+  const datekey=dk(date);
+  const dateStr=date.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('dsr-date-label').textContent=`DSR — ${dateStr}`;
+
+  const dayOrds=ORDERS.filter(o=>new Date(o.time).toDateString()===date.toDateString());
+  const dayExps=EXPENSES.filter(e=>new Date(e.time).toDateString()===date.toDateString());
+  const todaySE=SE[datekey]||{};
+  const prevKey=dk(new Date(date.getTime()-86400000));
+  const prevSE=SE[prevKey]||{};
+  const tray=TRAYS[datekey]||{};
+
+  const merchantOrds=dayOrds.filter(o=>o.type!=='retail');
+  const retailOrds=dayOrds.filter(o=>o.type==='retail');
+  const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
+  const cashRec=dayOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+  const creditTotal=merchantOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+  const retailTotal=retailOrds.reduce((s,o)=>s+o.total,0);
+  const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
+  const prevClosing=prevSE._closing||0;
+  const todayRecVal=PRODUCTS.reduce((s,p)=>s+(todaySE[p.id]||0)*p.cost,0);
+  const openingBal=prevClosing+todayRecVal;
+
+  document.getElementById('dsr-bill').textContent=`Rs. ${totalBill.toLocaleString('en-IN')}`;
+  document.getElementById('dsr-cash').textContent=`Rs. ${cashRec.toLocaleString('en-IN')}`;
+  document.getElementById('dsr-credit').textContent=`Rs. ${creditTotal.toLocaleString('en-IN')}`;
+  document.getElementById('dsr-retail').textContent=`Rs. ${retailTotal.toLocaleString('en-IN')}`;
+
+  // ── ROUTE SHEET ──
+  const dsrRows=MERCHANTS.map(m=>{
+    const mOrds=merchantOrds.filter(o=>o.merchantId===m.id);
+    const prodQtys={},repQtys={};
+    PRODUCTS.forEach(p=>{prodQtys[p.id]=0;repQtys[p.id]=0;});
+    mOrds.forEach(o=>o.items.forEach(it=>{
+      prodQtys[it.skuId]=(prodQtys[it.skuId]||0)+it.qty;
+      if(it.rep&&it.rep.qty>0) repQtys[it.skuId]=(repQtys[it.skuId]||0)+it.rep.qty;
+    }));
+    const bill=mOrds.reduce((s,o)=>s+o.total,0);
+    const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&o.payment==='credit'&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
+    const cashCollected=mOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+    const creditLeft=mOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+    const totalDue=prevBal+bill;
+    return {m,prodQtys,repQtys,bill,prevBal,cashCollected,creditLeft,totalDue,hasActivity:mOrds.length>0};
+  });
+
+  const activeRows=dsrRows.filter(r=>r.hasActivity);
+  document.getElementById('dsr-route-count').textContent=`${activeRows.length} merchant${activeRows.length!==1?'s':''} served`;
+
+  const routeList=document.getElementById('dsr-route-list');
+  if(!dsrRows.length){
+    routeList.innerHTML=`<div class="empty" style="padding:32px"><div class="empty-title">No merchants yet</div></div>`;
+  } else {
+    routeList.innerHTML=dsrRows.map((r,i)=>{
+      const chips=PRODUCTS.map(p=>{
+        const q=r.prodQtys[p.id]||0,rep=r.repQtys[p.id]||0;
+        if(!q&&!rep) return '';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin:2px"><span style="color:var(--text3);font-size:10px">${p.code||p.name.split(' ')[0]}</span><span>${q}</span>${rep?`<span style="color:var(--amber);font-size:10px">↩${rep}</span>`:''}</span>`;
+      }).filter(Boolean).join('');
+      const hasPrevBal=r.prevBal>0;
+      const bg=r.hasActivity?'var(--bg)':'var(--bg2)';
+      const opacity=r.hasActivity?'1':'0.5';
+      return `<div style="padding:14px 20px;border-bottom:1px solid var(--border);background:${bg};opacity:${opacity}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;margin-bottom:6px"><span style="color:var(--text3);font-size:11px;margin-right:6px">${i+1}</span>${r.m.name}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:${hasPrevBal?'6':'0'}px">${chips||`<span style="font-size:11px;color:var(--text3)">No orders today</span>`}</div>
+            ${hasPrevBal?`<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:4px">⚠ Prev balance: Rs.${r.prevBal.toLocaleString('en-IN')}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            ${r.bill>0?`<div style="font-size:15px;font-weight:800;font-family:'DM Mono',monospace">Rs.${r.bill.toLocaleString('en-IN')}</div>`:''}
+            ${r.cashCollected>0?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:2px">✓ Rs.${r.cashCollected.toLocaleString('en-IN')}</div>`:''}
+            ${r.creditLeft>0?`<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:2px">CR Rs.${r.creditLeft.toLocaleString('en-IN')}</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Retail row
+  const retailRow=document.getElementById('dsr-retail-row');
+  if(retailOrds.length){
+    retailRow.style.display='block';
+    const retailChips=PRODUCTS.map(p=>{
+      const q=retailOrds.reduce((s,o)=>s+o.items.filter(it=>it.skuId===p.id).reduce((ss,it)=>ss+it.qty,0),0);
+      if(!q) return '';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin:2px"><span style="color:var(--text3);font-size:10px">${p.code||p.name.split(' ')[0]}</span><span>${q}</span></span>`;
+    }).filter(Boolean).join('');
+    retailRow.innerHTML=`<div style="padding:14px 20px;background:var(--blue-bg)"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--blue)">🛒 Retail Sales <span style="font-size:11px;font-weight:400;color:var(--text3)">${retailOrds.length} transaction${retailOrds.length>1?'s':''}</span></div><div style="display:flex;flex-wrap:wrap;gap:2px">${retailChips}</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:15px;font-weight:800;font-family:'DM Mono',monospace;color:var(--blue)">Rs.${retailTotal.toLocaleString('en-IN')}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">retail price</div></div></div></div>`;
+  } else {
+    retailRow.style.display='none';
+  }
+
+  // Totals strip
+  const totBill=dsrRows.reduce((s,r)=>s+r.bill,0);
+  const totCash=dsrRows.reduce((s,r)=>s+r.cashCollected,0);
+  const totCredit=dsrRows.reduce((s,r)=>s+r.creditLeft,0);
+  const totRepl=PRODUCTS.reduce((s,p)=>s+dsrRows.reduce((ss,r)=>ss+(r.repQtys[p.id]||0),0),0);
+  document.getElementById('dsr-totals-strip').innerHTML=`
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Merchant Bill</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace">Rs.${totBill.toLocaleString('en-IN')}</div></div>
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Cash Collected</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:#86efac">Rs.${totCash.toLocaleString('en-IN')}</div></div>
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Credit Today</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:#fcd34d">Rs.${totCredit.toLocaleString('en-IN')}</div></div>
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Replacements</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace">${totRepl} units</div></div>`;
+
+  // ── DAY CLOSE ──
+  const cashInHand=cashRec-totalExpD;
+  document.getElementById('dsr-summary-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">IOS (Opening Balance)</span><span class="pl-val mono" style="color:var(--blue)">Rs.${openingBal.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Today's Bill</span><span class="pl-val mono">Rs.${totalBill.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Cash Received</span><span class="pl-val mono" style="color:var(--green)">Rs.${cashRec.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Expenses</span><span class="pl-val mono" style="color:var(--red)">Rs.${totalExpD.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Credit (CR)</span><span class="pl-val mono" style="color:var(--amber)">Rs.${creditTotal.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">NT Total</span><span class="pl-val mono" style="color:var(--green);font-weight:700">Rs.${(cashRec-totalExpD).toLocaleString('en-IN')}</span></div>
+    <div class="pl-row pl-total"><span class="pl-label">Cash in Hand (CIH)</span><span class="pl-val mono" style="color:${cashInHand<0?'var(--red)':'var(--green)'}">Rs.${Math.abs(cashInHand).toLocaleString('en-IN')}</span></div>`;
+
+  document.getElementById('dsr-payment-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">OB</span><span class="pl-val mono">Rs.${openingBal.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Bill</span><span class="pl-val mono">Rs.${totalBill.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">Paid (Cash + UPI)</span><span class="pl-val mono" style="color:var(--green)">Rs.${cashRec.toLocaleString('en-IN')}</span></div>
+    <div class="pl-row"><span class="pl-label">CR. NT.</span><span class="pl-val mono">—</span></div>
+    <div class="pl-row pl-total"><span class="pl-label">Balance</span><span class="pl-val mono" style="color:var(--amber)">Rs.${creditTotal.toLocaleString('en-IN')}</span></div>`;
+
+  const repRows=PRODUCTS.map(p=>{
+    const totalRep=dsrRows.reduce((s,r)=>s+(r.repQtys[p.id]||0),0);
+    return {p,totalRep,val:totalRep*p.sale};
+  }).filter(r=>r.totalRep>0);
+  document.getElementById('dsr-rep-body').innerHTML=repRows.length
+    ?repRows.map(r=>`<tr><td style="font-weight:600">${r.p.name}</td><td class="mono" style="color:var(--amber)">${r.totalRep}</td><td class="mono" style="color:var(--red)">Rs.${r.val.toLocaleString('en-IN')}</td></tr>`).join('')
+    :`<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:18px">No replacements</td></tr>`;
+
+  document.getElementById('dsr-trays-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">Full Trays Received</span><span class="pl-val mono">${tray.full||'—'}</span></div>
+    <div class="pl-row"><span class="pl-label">Empty Trays Returned</span><span class="pl-val mono">${tray.empty||'—'}</span></div>`;
+
+  // Balance Payment — all pending credits
+  const allCreditOrds=ORDERS.filter(o=>o.type!=='retail'&&o.payment==='credit');
+  const creditByMerchant={};
+  allCreditOrds.forEach(o=>{
+    if(!creditByMerchant[o.merchantId]) creditByMerchant[o.merchantId]={name:o.merchantName,orders:[],total:0};
+    creditByMerchant[o.merchantId].orders.push(o);
+    creditByMerchant[o.merchantId].total+=o.total;
+  });
+  const bpEntries=Object.values(creditByMerchant).sort((a,b)=>b.total-a.total);
+  const bpEl=document.getElementById('dsr-balance-payment-body');
+  if(!bpEntries.length){
+    bpEl.innerHTML=`<div class="empty"><div class="empty-title">No pending credits</div></div>`;
+  } else {
+    bpEl.innerHTML=`<table class="dt"><thead><tr><th>Merchant</th><th>Orders</th><th>Outstanding</th><th>Action</th></tr></thead><tbody>${bpEntries.map(e=>`<tr><td style="font-weight:600">${e.name}</td><td style="color:var(--text2);font-size:12px">${e.orders.length} credit order${e.orders.length>1?'s':''}</td><td class="mono" style="color:var(--amber);font-weight:700">Rs.${e.total.toLocaleString('en-IN')}</td><td><button class="btn-s sm" onclick="openCreditPayModal('${e.orders[0].merchantId}')">Record Payment</button></td></tr>`).join('')}</tbody></table>`;
+  }
+}
+
+function switchDSRTab(tab){
+  const isRoute=tab==='route';
+  document.getElementById('dsr-pane-route').style.display=isRoute?'block':'none';
+  document.getElementById('dsr-pane-close').style.display=isRoute?'none':'block';
+  document.getElementById('dsr-tab-route').style.cssText=`padding:7px 20px;border-radius:8px;border:none;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${isRoute?'var(--text)':'transparent'};color:${isRoute?'#fff':'var(--text2)'}`;
+  document.getElementById('dsr-tab-close').style.cssText=`padding:7px 20px;border-radius:8px;border:none;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:${isRoute?'transparent':'var(--text)'};color:${isRoute?'var(--text2)':'#fff'}`;
+}
+
+let activeCreditMerchId=null;
+function openCreditPayModal(merchantId){
+  activeCreditMerchId=merchantId;
+  const orders=ORDERS.filter(o=>o.merchantId===merchantId&&o.payment==='credit');
+  const name=orders[0]?.merchantName||'Merchant';
+  const total=orders.reduce((s,o)=>s+o.total,0);
+  document.getElementById('cp-title').textContent=`Record Payment — ${name}`;
+  document.getElementById('cp-merchant').textContent=name;
+  document.getElementById('cp-outstanding').textContent=`Total outstanding: Rs.${total.toLocaleString('en-IN')}`;
+  document.getElementById('cp-amount').value='';
+  document.getElementById('cp-pay').value='cash';
+  document.getElementById('cp-orders-list').innerHTML=orders.map(o=>{
+    const t=new Date(o.time);
+    return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvModal('${o.id}');closeModal('mo-credit-pay')">
+      <div><div style="font-size:12px;font-weight:600">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div><div style="font-size:11px;color:var(--text3)">${o.id} · ${o.items.length} item${o.items.length>1?'s':''}</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="mono" style="font-weight:700;color:var(--amber)">Rs.${o.total.toLocaleString('en-IN')}</span><svg width="13" height="13" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+    </div>`;
+  }).join('');
+  document.getElementById('mo-credit-pay').classList.add('open');
+}
+function saveCreditPayment(){
+  const amt=parseFloat(document.getElementById('cp-amount').value)||0;
+  if(!amt||amt<=0){alert('Enter a valid amount');return;}
+  const mode=document.getElementById('cp-pay').value;
+  let remaining=amt;
+  const creditOrds=ORDERS.filter(o=>o.merchantId===activeCreditMerchId&&o.payment==='credit').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  for(const o of creditOrds){
+    if(remaining<=0) break;
+    if(remaining>=o.total){o.payment=mode;remaining-=o.total;}
+    else{o.partialPaid=(o.partialPaid||0)+remaining;remaining=0;}
+  }
+  localStorage.setItem('mb_v4_orders',JSON.stringify(ORDERS));
+  closeModal('mo-credit-pay');
+  renderDSR();renderLive();renderDashboard();
+}
+
+// ── DSR PDF ──
+function downloadDSR(){
+  const date=getDSRDate();
+  const datekey=dk(date);
+  const dateStr=date.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const dayOrds=ORDERS.filter(o=>new Date(o.time).toDateString()===date.toDateString());
+  const dayExps=EXPENSES.filter(e=>new Date(e.time).toDateString()===date.toDateString());
+  const todaySE=SE[datekey]||{};
+  const prevKey=dk(new Date(date.getTime()-86400000));
+  const prevSE=SE[prevKey]||{};
+  const tray=TRAYS[datekey]||{};
+
+  const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
+  const cashRec=dayOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+  const creditTotal=dayOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+  const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
+  const prevClosing=prevSE._closing||0;
+  const todayRecVal=PRODUCTS.reduce((s,p)=>s+(todaySE[p.id]||0)*p.cost,0);
+  const openingBal=prevClosing+todayRecVal;
+  const cashInHand=cashRec-totalExpD;
+
+  const {jsPDF}=window.jspdf;
+  // Landscape A4
+  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+  const PW=doc.internal.pageSize.getWidth();
+  const PH=doc.internal.pageSize.getHeight();
+
+  // Header band
+  doc.setFillColor(15,15,15); doc.rect(0,0,PW,18,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('MITALI AGENCY',PW/2,7,{align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text('ROHA - RAIGAD',PW/2,12,{align:'center'});
+  doc.text('MODERN BREAD (DSR)',PW/2,16,{align:'center'});
+
+  // Date + summary row
+  doc.setTextColor(15,15,15);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text(`DATE: ${dateStr}`,10,24);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  const sumY=24;
+  doc.text(`OB: Rs.${openingBal.toLocaleString('en-IN')}`,80,sumY);
+  doc.text(`BILL: Rs.${totalBill.toLocaleString('en-IN')}`,130,sumY);
+  doc.text(`CASH RECEIVED: Rs.${cashRec.toLocaleString('en-IN')}`,175,sumY);
+  doc.text(`EXPENSES: Rs.${totalExpD.toLocaleString('en-IN')}`,240,sumY);
+  doc.text(`CASH IN HAND: Rs.${cashInHand.toLocaleString('en-IN')}`,270,sumY);
+
+  // Main merchant table
+  const dsrRows=MERCHANTS.map(m=>{
+    const mOrds=dayOrds.filter(o=>o.merchantId===m.id);
+    const prodQtys={},repQtys={};
+    PRODUCTS.forEach(p=>{prodQtys[p.id]=0;repQtys[p.id]=0;});
+    mOrds.forEach(o=>o.items.forEach(it=>{
+      prodQtys[it.skuId]=(prodQtys[it.skuId]||0)+it.qty;
+      if(it.rep&&it.rep.qty>0) repQtys[it.skuId]=(repQtys[it.skuId]||0)+it.rep.qty;
+    }));
+    const bill=mOrds.reduce((s,o)=>s+o.total,0);
+    const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&o.payment==='credit'&&new Date(o.time).toDateString()!==date.toDateString()).reduce((s,o)=>s+o.total,0);
+    const cashCollected=mOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+    const totalDue=prevBal+bill;
+    return [m.name,...PRODUCTS.map(p=>prodQtys[p.id]||''),PRODUCTS.reduce((s,p)=>s+(repQtys[p.id]||0),0)||'',prevBal||'',bill||'',totalDue||'',cashCollected||''];
+  });
+
+  // Totals row
+  const totProd=PRODUCTS.map(p=>MERCHANTS.reduce((s,m)=>{const mOrds=dayOrds.filter(o=>o.merchantId===m.id);return s+mOrds.reduce((ss,o)=>ss+o.items.filter(it=>it.skuId===p.id).reduce((sss,it)=>sss+it.qty,0),0);},0));
+  const totRepl=MERCHANTS.reduce((s,m)=>{const mOrds=dayOrds.filter(o=>o.merchantId===m.id);return s+mOrds.reduce((ss,o)=>ss+o.items.reduce((sss,it)=>sss+(it.rep?it.rep.qty:0),0),0);},0);
+  dsrRows.push(['TOTAL',...totProd,totRepl||'','',totalBill||'',totalBill||'',cashRec||'']);
+
+  const head=[['#','SHOP',...PRODUCTS.map(p=>p.name),'REPL','BALANCE','BILL','TOTAL','CASH RCVD']];
+  const bodyWithIdx=dsrRows.slice(0,-1).map((r,i)=>[i+1,...r]);
+  bodyWithIdx.push(['','TOTAL',...totProd,totRepl||'','',totalBill||'',totalBill||'',cashRec||'']);
+
+  doc.autoTable({
+    startY:28,
+    head:head,
+    body:bodyWithIdx,
+    styles:{fontSize:7,cellPadding:2,font:'helvetica'},
+    headStyles:{fillColor:[15,15,15],textColor:255,fontStyle:'bold',halign:'center'},
+    columnStyles:{
+      0:{cellWidth:8,halign:'center'},
+      1:{cellWidth:35},
+      ...Object.fromEntries(PRODUCTS.map((_,i)=>[i+2,{cellWidth:14,halign:'center'}])),
+      [PRODUCTS.length+2]:{cellWidth:12,halign:'center',textColor:[217,119,6]},
+      [PRODUCTS.length+3]:{cellWidth:16,halign:'right'},
+      [PRODUCTS.length+4]:{cellWidth:16,halign:'right'},
+      [PRODUCTS.length+5]:{cellWidth:16,halign:'right'},
+      [PRODUCTS.length+6]:{cellWidth:18,halign:'right',textColor:[22,163,74]},
+    },
+    didParseCell(d){
+      if(d.row.index===bodyWithIdx.length-1){d.cell.styles.fontStyle='bold';d.cell.styles.fillColor=[240,240,240];}
+    },
+    margin:{left:8,right:8},
+  });
+
+  let y=doc.lastAutoTable.finalY+8;
+
+  // Replacement + Summary side by side
+  // Replacement sheet
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('REPLACEMENT SHEET',10,y); y+=4;
+  const repData=PRODUCTS.map(p=>{
+    const totalRep=MERCHANTS.reduce((s,m)=>{const mOrds=dayOrds.filter(o=>o.merchantId===m.id);return s+mOrds.reduce((ss,o)=>ss+o.items.filter(it=>it.skuId===p.id).reduce((sss,it)=>sss+(it.rep?it.rep.qty:0),0),0);},0);
+    return [p.name,totalRep,totalRep>0?`Rs.${totalRep*p.sale}`:''];
+  }).filter(r=>r[1]>0);
+  if(repData.length){
+    doc.autoTable({startY:y,head:[['Code','Replaced','Value']],body:repData,styles:{fontSize:7,cellPadding:2},headStyles:{fillColor:[15,15,15],textColor:255,fontStyle:'bold'},margin:{left:8,right:PW/2+4},tableWidth:PW/2-12});
+  }
+
+  // Summary
+  const sumStartY=doc.lastAutoTable?doc.lastAutoTable.finalY-((repData.length||1)*6+6):y;
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('SUMMARY',PW/2+8,y);
+  doc.autoTable({startY:y+4,
+    head:[['Item','Amount']],
+    body:[['Opening Balance (IOS)',`Rs.${openingBal.toLocaleString('en-IN')}`],['Today\'s Bill',`Rs.${totalBill.toLocaleString('en-IN')}`],['Cash Received',`Rs.${cashRec.toLocaleString('en-IN')}`],['Expenses',`Rs.${totalExpD.toLocaleString('en-IN')}`],['Credit (CR)',`Rs.${creditTotal.toLocaleString('en-IN')}`],['Net Total',`Rs.${(cashRec-totalExpD).toLocaleString('en-IN')}`],['Cash in Hand',`Rs.${cashInHand.toLocaleString('en-IN')}`]],
+    styles:{fontSize:7,cellPadding:2},
+    headStyles:{fillColor:[15,15,15],textColor:255,fontStyle:'bold'},
+    columnStyles:{1:{halign:'right'}},
+    margin:{left:PW/2+8,right:8},tableWidth:PW/2-16});
+
+  // Trays & Payment at bottom
+  const bottomY=doc.lastAutoTable.finalY+6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('PAYMENT',10,bottomY);
+  doc.autoTable({startY:bottomY+4,
+    head:[['','Amount']],
+    body:[['OB',`Rs.${openingBal.toLocaleString('en-IN')}`],['Bill',`Rs.${totalBill.toLocaleString('en-IN')}`],['Paid',`Rs.${cashRec.toLocaleString('en-IN')}`],['CR. NT.','—'],['Balance',`Rs.${creditTotal.toLocaleString('en-IN')}`]],
+    styles:{fontSize:7,cellPadding:2},
+    headStyles:{fillColor:[60,60,60],textColor:255,fontStyle:'bold'},
+    columnStyles:{1:{halign:'right'}},
+    margin:{left:8,right:PW*0.65},tableWidth:PW*0.35-16});
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('TRAYS',PW/2+8,bottomY);
+  doc.autoTable({startY:bottomY+4,
+    head:[['','Count']],
+    body:[['Full Trays Received',tray.full||'—'],['Empty Trays Returned',tray.empty||'—']],
+    styles:{fontSize:7,cellPadding:2},
+    headStyles:{fillColor:[60,60,60],textColor:255,fontStyle:'bold'},
+    columnStyles:{1:{halign:'right'}},
+    margin:{left:PW/2+8,right:8},tableWidth:PW/2-16});
+
+  doc.save(`DSR-${dateStr.replace(/\s/g,'-')}.pdf`);
+}
+
+// ── PRODUCTS ──
+function getDSRData(date=getDSRDate()){
+  const datekey=dk(date);
+  const tray=TRAYS[datekey]||{};
+  const dayOrds=ORDERS.filter(o=>isSameLocalDay(o.time,date));
+  const dayExps=EXPENSES.filter(e=>isSameLocalDay(e.time,date));
+  const dayCreditPayments=CREDIT_PAYMENTS.filter(p=>isSameLocalDay(p.time,date));
+  const merchantOrds=dayOrds.filter(o=>o.type!=='retail');
+  const retailOrds=dayOrds.filter(o=>o.type==='retail');
+  const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
+  const salesCollections=dayOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+  const recoveredToday=dayCreditPayments.reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const cashRec=salesCollections+recoveredToday;
+  const creditTotal=merchantOrds.reduce((s,o)=>s+getOrderOutstanding(o),0);
+  const retailTotal=retailOrds.reduce((s,o)=>s+o.total,0);
+  const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
+  const openingBal=getOpeningBalanceAmount(datekey);
+  const openingNote=getOpeningBalanceNote(datekey);
+  const cashInHand=openingBal+cashRec-totalExpD;
+  const stockReceiptValue=PRODUCTS.reduce((s,p)=>s+getReceivedQty(datekey,p.id)*p.cost,0);
+
+  const dsrRows=MERCHANTS.map(m=>{
+    const mOrds=merchantOrds.filter(o=>o.merchantId===m.id);
+    const prodQtys={},repQtys={};
+    PRODUCTS.forEach(p=>{prodQtys[p.id]=0;repQtys[p.id]=0;});
+    mOrds.forEach(o=>o.items.forEach(it=>{
+      prodQtys[it.skuId]=(prodQtys[it.skuId]||0)+(Number(it.qty)||0);
+      if(it.rep&&it.rep.qty>0) repQtys[it.skuId]=(repQtys[it.skuId]||0)+(Number(it.rep.qty)||0);
+    }));
+    const bill=mOrds.reduce((s,o)=>s+o.total,0);
+    const prevBal=getMerchantOutstandingBeforeDate(m.id,datekey);
+    const cashCollected=mOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
+    const creditLeft=mOrds.reduce((s,o)=>s+getOrderOutstanding(o),0);
+    const recovered=dayCreditPayments.filter(p=>p.merchantId===m.id).reduce((s,p)=>s+(Number(p.amount)||0),0);
+    return {m,prodQtys,repQtys,bill,prevBal,cashCollected,creditLeft,recovered,hasActivity:mOrds.length>0||prevBal>0||recovered>0};
+  });
+
+  const repRows=PRODUCTS.map(p=>{
+    const totalRep=dsrRows.reduce((s,r)=>s+(r.repQtys[p.id]||0),0);
+    return {p,totalRep,val:totalRep*p.sale};
+  }).filter(r=>r.totalRep>0);
+
+  const pendingByMerchant={};
+  ORDERS.filter(o=>o.type!=='retail'&&getOrderOutstanding(o)>0).forEach(o=>{
+    if(!pendingByMerchant[o.merchantId]){
+      pendingByMerchant[o.merchantId]={merchantId:o.merchantId,name:o.merchantName,orders:[],total:0};
+    }
+    const outstanding=getOrderOutstanding(o);
+    pendingByMerchant[o.merchantId].orders.push({...o,outstanding});
+    pendingByMerchant[o.merchantId].total+=outstanding;
+  });
+
+  return {
+    date,
+    datekey,
+    tray,
+    dayOrds,
+    dayExps,
+    dayCreditPayments,
+    merchantOrds,
+    retailOrds,
+    totalBill,
+    salesCollections,
+    recoveredToday,
+    cashRec,
+    creditTotal,
+    retailTotal,
+    totalExpD,
+    openingBal,
+    openingNote,
+    cashInHand,
+    stockReceiptValue,
+    dsrRows,
+    repRows,
+    pendingCreditEntries:Object.values(pendingByMerchant).sort((a,b)=>b.total-a.total),
+  };
+}
+function renderDSR(){
+  const data=getDSRData();
+  const dateStr=data.date.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('dsr-date-label').textContent=`DSR - ${dateStr}`;
+  document.getElementById('dsr-bill').textContent=formatCurrency(data.totalBill);
+  document.getElementById('dsr-cash').textContent=formatCurrency(data.cashRec);
+  document.getElementById('dsr-credit').textContent=formatCurrency(data.creditTotal);
+  document.getElementById('dsr-retail').textContent=formatCurrency(data.retailTotal);
+
+  const activeRows=data.dsrRows.filter(r=>r.hasActivity);
+  document.getElementById('dsr-route-count').textContent=`${activeRows.length} active merchant${activeRows.length!==1?'s':''}`;
+
+  const routeList=document.getElementById('dsr-route-list');
+  if(!data.dsrRows.length){
+    routeList.innerHTML=`<div class="empty" style="padding:32px"><div class="empty-title">No merchants yet</div></div>`;
+  }else{
+    routeList.innerHTML=data.dsrRows.map((r,i)=>{
+      const chips=PRODUCTS.map(p=>{
+        const q=r.prodQtys[p.id]||0, rep=r.repQtys[p.id]||0;
+        if(!q&&!rep) return '';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin:2px"><span style="color:var(--text3);font-size:10px">${escapeHtml(p.code||p.name.split(' ')[0])}</span><span>${q}</span>${rep?`<span style="color:var(--amber);font-size:10px">R${rep}</span>`:''}</span>`;
+      }).filter(Boolean).join('');
+      return `<div style="padding:14px 20px;border-bottom:1px solid var(--border);background:${r.hasActivity?'var(--bg)':'var(--bg2)'};opacity:${r.hasActivity?'1':'0.55'}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;margin-bottom:6px"><span style="color:var(--text3);font-size:11px;margin-right:6px">${i+1}</span>${escapeHtml(r.m.name)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:${r.prevBal>0||r.recovered>0?'6':'0'}px">${chips||`<span style="font-size:11px;color:var(--text3)">No orders today</span>`}</div>
+            ${r.prevBal>0?`<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:4px">Prev balance: ${formatCurrency(r.prevBal)}</div>`:''}
+            ${r.recovered>0?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">Recovered today: ${formatCurrency(r.recovered)}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            ${r.bill>0?`<div style="font-size:15px;font-weight:800;font-family:'DM Mono',monospace">${formatCurrency(r.bill)}</div>`:''}
+            ${r.cashCollected>0?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:2px">Paid ${formatCurrency(r.cashCollected)}</div>`:''}
+            ${r.creditLeft>0?`<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:2px">Outstanding ${formatCurrency(r.creditLeft)}</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const retailRow=document.getElementById('dsr-retail-row');
+  if(data.retailOrds.length){
+    retailRow.style.display='block';
+    const retailChips=PRODUCTS.map(p=>{
+      const q=data.retailOrds.reduce((s,o)=>s+o.items.filter(it=>it.skuId===p.id).reduce((sub,it)=>sub+(Number(it.qty)||0),0),0);
+      if(!q) return '';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin:2px"><span style="color:var(--text3);font-size:10px">${escapeHtml(p.code||p.name.split(' ')[0])}</span><span>${q}</span></span>`;
+    }).filter(Boolean).join('');
+    retailRow.innerHTML=`<div style="padding:14px 20px;background:var(--blue-bg)"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px"><div style="flex:1"><div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--blue)">Retail Sales <span style="font-size:11px;font-weight:400;color:var(--text3)">${data.retailOrds.length} transaction${data.retailOrds.length!==1?'s':''}</span></div><div style="display:flex;flex-wrap:wrap;gap:2px">${retailChips}</div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:15px;font-weight:800;font-family:'DM Mono',monospace;color:var(--blue)">${formatCurrency(data.retailTotal)}</div><div style="font-size:11px;color:var(--text2);margin-top:2px">retail price</div></div></div></div>`;
+  }else{
+    retailRow.style.display='none';
+  }
+
+  const totBill=data.dsrRows.reduce((s,r)=>s+r.bill,0);
+  const totCash=data.dsrRows.reduce((s,r)=>s+r.cashCollected,0);
+  const totRecovery=data.dsrRows.reduce((s,r)=>s+r.recovered,0);
+  const totRepl=data.repRows.reduce((s,r)=>s+r.totalRep,0);
+  document.getElementById('dsr-totals-strip').innerHTML=`
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Merchant Bill</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace">${formatCurrency(totBill)}</div></div>
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Order Collection</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:#86efac">${formatCurrency(totCash)}</div></div>
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Balance Recovery</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:#93c5fd">${formatCurrency(totRecovery)}</div></div>
+    <div><div style="font-size:10px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Replacements</div><div style="font-size:18px;font-weight:800;font-family:'DM Mono',monospace">${totRepl} units</div></div>`;
+
+  document.getElementById('dsr-summary-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">Opening Balance</span><span class="pl-val mono" style="color:var(--blue)">${formatCurrency(data.openingBal)}</span></div>
+    <div class="pl-row"><span class="pl-label">Today's Bill</span><span class="pl-val mono">${formatCurrency(data.totalBill)}</span></div>
+    <div class="pl-row"><span class="pl-label">Sales Collection</span><span class="pl-val mono" style="color:var(--green)">${formatCurrency(data.salesCollections)}</span></div>
+    <div class="pl-row"><span class="pl-label">Past Due Recovery</span><span class="pl-val mono" style="color:var(--green)">${formatCurrency(data.recoveredToday)}</span></div>
+    <div class="pl-row"><span class="pl-label">Expenses</span><span class="pl-val mono" style="color:var(--red)">${formatCurrency(data.totalExpD)}</span></div>
+    <div class="pl-row"><span class="pl-label">Credit Pending</span><span class="pl-val mono" style="color:var(--amber)">${formatCurrency(data.creditTotal)}</span></div>
+    <div class="pl-row pl-total"><span class="pl-label">Cash in Hand</span><span class="pl-val mono" style="color:${data.cashInHand<0?'var(--red)':'var(--green)'}">${formatCurrency(data.cashInHand)}</span></div>`;
+
+  document.getElementById('dsr-payment-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">Opening</span><span class="pl-val mono">${formatCurrency(data.openingBal)}</span></div>
+    <div class="pl-row"><span class="pl-label">Order Collection</span><span class="pl-val mono" style="color:var(--green)">${formatCurrency(data.salesCollections)}</span></div>
+    <div class="pl-row"><span class="pl-label">Balance Recovery</span><span class="pl-val mono" style="color:var(--green)">${formatCurrency(data.recoveredToday)}</span></div>
+    <div class="pl-row"><span class="pl-label">Total Collection</span><span class="pl-val mono">${formatCurrency(data.cashRec)}</span></div>
+    <div class="pl-row"><span class="pl-label">Expenses</span><span class="pl-val mono" style="color:var(--red)">${formatCurrency(data.totalExpD)}</span></div>
+    <div class="pl-row"><span class="pl-label">Stock Receipt Value</span><span class="pl-val mono">${formatCurrency(data.stockReceiptValue)}</span></div>
+    <div class="pl-row pl-total"><span class="pl-label">Closing Cash</span><span class="pl-val mono" style="color:${data.cashInHand<0?'var(--red)':'var(--green)'}">${formatCurrency(data.cashInHand)}</span></div>`;
+
+  document.getElementById('dsr-rep-body').innerHTML=data.repRows.length
+    ?data.repRows.map(r=>`<tr><td style="font-weight:600">${escapeHtml(r.p.name)}</td><td class="mono" style="color:var(--amber)">${r.totalRep}</td><td class="mono" style="color:var(--red)">${formatCurrency(r.val)}</td></tr>`).join('')
+    :`<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:18px">No replacements</td></tr>`;
+
+  document.getElementById('dsr-trays-body').innerHTML=`
+    <div class="pl-row"><span class="pl-label">Full Trays Received</span><span class="pl-val mono">${data.tray.full ?? '-'}</span></div>
+    <div class="pl-row"><span class="pl-label">Empty Trays Returned</span><span class="pl-val mono">${data.tray.empty ?? '-'}</span></div>
+    ${data.openingNote?`<div class="pl-row"><span class="pl-label">Opening Note</span><span class="pl-val" style="font-family:inherit;font-size:13px;max-width:180px;text-align:right">${escapeHtml(data.openingNote)}</span></div>`:''}`;
+
+  const bpEl=document.getElementById('dsr-balance-payment-body');
+  const recoveriesTable=data.dayCreditPayments.length
+    ?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div style="padding:12px 14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2)"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Collected Today</div><div style="font-size:18px;font-weight:800">${formatCurrency(data.recoveredToday)}</div></div>
+        <div style="padding:12px 14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2)"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Entries Logged</div><div style="font-size:18px;font-weight:800">${data.dayCreditPayments.length}</div></div>
+      </div>
+      <table class="dt" style="margin-bottom:14px"><thead><tr><th>Merchant</th><th>Time</th><th>Mode</th><th>Amount</th></tr></thead><tbody>${data.dayCreditPayments.map(p=>`<tr><td style="font-weight:600">${escapeHtml(p.merchantName||'Merchant')}</td><td style="color:var(--text2);font-size:12px">${new Date(p.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${escapeHtml((p.mode||'cash').toUpperCase())}</td><td class="mono" style="color:var(--green);font-weight:700">${formatCurrency(p.amount)}</td></tr>`).join('')}</tbody></table>`
+    :`<div style="padding:14px 16px;border:1px dashed var(--border2);border-radius:var(--r);margin-bottom:14px;color:var(--text2);font-size:13px">No balance recovery recorded for this day yet.</div>`;
+
+  if(!data.pendingCreditEntries.length){
+    bpEl.innerHTML=`${recoveriesTable}<div class="empty"><div class="empty-title">No pending credits</div></div>`;
+  }else{
+    bpEl.innerHTML=`${recoveriesTable}<table class="dt"><thead><tr><th>Merchant</th><th>Orders</th><th>Outstanding</th><th>Action</th></tr></thead><tbody>${data.pendingCreditEntries.map(e=>`<tr><td style="font-weight:600">${escapeHtml(e.name)}</td><td style="color:var(--text2);font-size:12px">${e.orders.length} pending order${e.orders.length!==1?'s':''}</td><td class="mono" style="color:var(--amber);font-weight:700">${formatCurrency(e.total)}</td><td><button class="btn-s sm" onclick="openCreditPayModal('${e.merchantId}')">Record Payment</button></td></tr>`).join('')}</tbody></table>`;
+  }
+}
+function openCreditPayModal(merchantId){
+  activeCreditMerchId=merchantId;
+  const orders=ORDERS.filter(o=>o.merchantId===merchantId&&getOrderOutstanding(o)>0);
+  const name=orders[0]?.merchantName||'Merchant';
+  const total=orders.reduce((s,o)=>s+getOrderOutstanding(o),0);
+  document.getElementById('cp-title').textContent=`Record Payment - ${name}`;
+  document.getElementById('cp-merchant').textContent=name;
+  document.getElementById('cp-outstanding').textContent=`Total outstanding: ${formatCurrency(total)}`;
+  document.getElementById('cp-amount').value='';
+  document.getElementById('cp-pay').value='cash';
+  document.getElementById('cp-orders-list').innerHTML=orders.map(o=>{
+    const t=new Date(o.time);
+    return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openInvModal('${o.id}');closeModal('mo-credit-pay')">
+      <div><div style="font-size:12px;font-weight:600">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div><div style="font-size:11px;color:var(--text3)">${o.id} · ${o.items.length} item${o.items.length!==1?'s':''}</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="mono" style="font-weight:700;color:var(--amber)">${formatCurrency(getOrderOutstanding(o))}</span><svg width="13" height="13" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+    </div>`;
+  }).join('');
+  document.getElementById('mo-credit-pay').classList.add('open');
+}
+function saveCreditPayment(){
+  const amt=parseFloat(document.getElementById('cp-amount').value)||0;
+  if(!amt||amt<=0){alert('Enter a valid amount');return;}
+  const mode=document.getElementById('cp-pay').value;
+  const creditOrds=ORDERS.filter(o=>o.merchantId===activeCreditMerchId&&getOrderOutstanding(o)>0).sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const totalOutstanding=creditOrds.reduce((s,o)=>s+getOrderOutstanding(o),0);
+  if(!totalOutstanding){alert('No pending credit left for this merchant.');closeModal('mo-credit-pay');renderDSR();return;}
+  let remaining=Math.min(amt,totalOutstanding);
+  const recordedAmount=remaining;
+  const allocations=[];
+  for(const order of creditOrds){
+    if(remaining<=0) break;
+    const outstanding=getOrderOutstanding(order);
+    const applied=Math.min(remaining,outstanding);
+    if(!applied) continue;
+    order.creditPaid=getOrderCreditPaid(order)+applied;
+    order.lastCreditPaymentMode=mode;
+    if(order.creditPaid>=order.total){
+      order.creditPaid=order.total;
+      order.payment=mode;
+    }
+    allocations.push({orderId:order.id,amount:applied});
+    remaining-=applied;
+  }
+  CREDIT_PAYMENTS.unshift({
+    id:`CP-${Date.now()}`,
+    merchantId:activeCreditMerchId,
+    merchantName:creditOrds[0]?.merchantName||'Merchant',
+    amount:recordedAmount,
+    mode,
+    time:new Date().toISOString(),
+    allocations,
+  });
+  persistOrders();
+  persistCreditPayments();
+  closeModal('mo-credit-pay');
+  renderDSR();renderLive();renderDashboard();renderInvoices();
+  if(amt>totalOutstanding) alert(`Only ${formatCurrency(totalOutstanding)} was outstanding, so that is what got recorded.`);
+}
+function buildExcelRow(cells){
+  return `<Row>${cells.map(cell=>{
+    const payload=(cell&&typeof cell==='object'&&!Array.isArray(cell)&&Object.prototype.hasOwnProperty.call(cell,'value'))?cell:{value:cell};
+    const value=payload.value;
+    const style=payload.style?` ss:StyleID="${payload.style}"`:'';
+    if(value===null||typeof value==='undefined'||value==='') return `<Cell${style}/>`;
+    const type=payload.type||(typeof value==='number'?'Number':'String');
+    return `<Cell${style}><Data ss:Type="${type}">${type==='Number'?Number(value):escapeXml(value)}</Data></Cell>`;
+  }).join('')}</Row>`;
+}
+function buildExcelWorkbook(sheets){
+  return `<?xml version="1.0"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Styles>
+    <Style ss:ID="hdr"><Font ss:Bold="1"/><Interior ss:Color="#EDEDED" ss:Pattern="Solid"/></Style>
+    <Style ss:ID="title"><Font ss:Bold="1" ss:Size="13"/></Style>
+  </Styles>
+  ${sheets.map(sheet=>`<Worksheet ss:Name="${escapeXml(String(sheet.name).slice(0,31))}"><Table>${sheet.rows.map(buildExcelRow).join('')}</Table></Worksheet>`).join('')}
+</Workbook>`;
+}
+function downloadBlobFile(filename, content, mimeType){
+  const blob=new Blob([content],{type:mimeType});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download=filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(()=>URL.revokeObjectURL(link.href),1000);
+}
+function downloadDSR(){
+  const data=getDSRData();
+  const routeRows=[
+    [{value:'DSR Route Sheet',style:'title'}],
+    ['Date',data.date.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})],
+    [],
+    ['#','Merchant','Area',...PRODUCTS.map(p=>p.code||p.name),'Repl','Prev Balance','Today Bill','Order Collection','Recovery','Outstanding'].map(value=>({value,style:'hdr'})),
+    ...data.dsrRows.map((row,index)=>[
+      index+1,
+      row.m.name,
+      '',
+      ...PRODUCTS.map(p=>row.prodQtys[p.id]||''),
+      PRODUCTS.reduce((sum,p)=>sum+(row.repQtys[p.id]||0),0)||'',
+      formatCurrency(row.prevBal),
+      formatCurrency(row.bill),
+      formatCurrency(row.cashCollected),
+      formatCurrency(row.recovered),
+      formatCurrency(row.creditLeft),
+    ]),
+  ];
+  if(data.retailOrds.length){
+    routeRows.push([]);
+    routeRows.push([{value:'Retail Summary',style:'hdr'}]);
+    routeRows.push(['Retail Orders',data.retailOrds.length,'Retail Total',formatCurrency(data.retailTotal)]);
+  }
+  const closeRows=[
+    [{value:'DSR Day Close',style:'title'}],
+    ['Opening Balance',formatCurrency(data.openingBal)],
+    ['Opening Note',data.openingNote||'-'],
+    ['Today Bill',formatCurrency(data.totalBill)],
+    ['Sales Collection',formatCurrency(data.salesCollections)],
+    ['Past Due Recovery',formatCurrency(data.recoveredToday)],
+    ['Total Collection',formatCurrency(data.cashRec)],
+    ['Expenses',formatCurrency(data.totalExpD)],
+    ['Credit Pending',formatCurrency(data.creditTotal)],
+    ['Cash in Hand',formatCurrency(data.cashInHand)],
+    ['Stock Receipt Value',formatCurrency(data.stockReceiptValue)],
+    ['Full Trays Received',data.tray.full ?? '-'],
+    ['Empty Trays Returned',data.tray.empty ?? '-'],
+  ];
+  const creditRows=[
+    [{value:'Credit Ledger',style:'title'}],
+    [],
+    ['Merchant','Time','Mode','Recovered'].map(value=>({value,style:'hdr'})),
+    ...(data.dayCreditPayments.length
+      ? data.dayCreditPayments.map(payment=>[
+          payment.merchantName||'Merchant',
+          new Date(payment.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
+          (payment.mode||'cash').toUpperCase(),
+          formatCurrency(payment.amount),
+        ])
+      : [['No recovery recorded today']]),
+    [],
+    ['Merchant','Pending Orders','Outstanding'].map(value=>({value,style:'hdr'})),
+    ...(data.pendingCreditEntries.length
+      ? data.pendingCreditEntries.map(entry=>[entry.name,entry.orders.length,formatCurrency(entry.total)])
+      : [['No outstanding credits']]),
+  ];
+  const workbook=buildExcelWorkbook([
+    {name:'Route Sheet',rows:routeRows},
+    {name:'Day Close',rows:closeRows},
+    {name:'Credit Ledger',rows:creditRows},
+  ]);
+  downloadBlobFile(`DSR_${sanitizeFilePart(data.datekey)}.xls`,workbook,'application/vnd.ms-excel');
+}
+
+function renderInvoices(){
+  const q=(document.getElementById('inv-search').value||'').toLowerCase();
+  const pf=document.getElementById('inv-pf').value;
+  let ords=filterItems(ORDERS).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(q) ords=ords.filter(o=>o.merchantName.toLowerCase().includes(q)||o.id.toLowerCase().includes(q));
+  if(pf) ords=ords.filter(o=>pf==='credit' ? getOrderOutstanding(o)>0 : o.payment===pf && getOrderOutstanding(o)===0);
+  const pm={cash:'bg',upi:'bb',credit:'ba'},pl={cash:'Cash',upi:'UPI',credit:'Credit'};
+  document.getElementById('inv-body').innerHTML=ords.length
+    ? ords.map(o=>{
+        const t=new Date(o.time);
+        const outstanding=getOrderOutstanding(o);
+        return `<tr class="click" onclick="openInvModal('${o.id}')"><td class="mono" style="font-size:11px">${o.id}</td><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${o.items.length} item${o.items.length!==1?'s':''}</td><td class="mono" style="font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><span class="badge ${pm[o.payment]||'bg'}">${pl[o.payment]||o.payment}</span>${isDelivered(o)?`<span class="badge ${getDeliveryBadgeClass(o)}">${getDeliveryLabel(o)}</span>`:''}</div></td><td><span class="badge ${outstanding>0?'ba':'bg'}">${outstanding>0?`Pending ${formatCurrency(outstanding)}`:'Paid'}</span></td><td><button class="btn-s sm" onclick="event.stopPropagation();dlPDF('${o.id}')">PDF</button></td></tr>`;
+      }).join('')
+    : `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No invoices</td></tr>`;
+}
+function openInvModal(id){
+  const o=ORDERS.find(x=>x.id===id);if(!o)return;
+  activeInv=o;
+  const t=new Date(o.time);
+  const outstanding=getOrderOutstanding(o);
+  const pm={cash:'bg',upi:'bb',credit:'ba'};
+  const pl={cash:'Cash (Collected)',upi:'UPI / Online (Paid)',credit:'Credit (Collect Later)'};
+  document.getElementById('inv-mt').textContent=`${o.merchantName} - ${o.id}`;
+  document.getElementById('inv-mbody').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;font-size:13px;color:var(--text2)"><span>${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="badge ${pm[o.payment]||'bg'}">${pl[o.payment]||o.payment}</span>${isDelivered(o)?`<span class="badge ${getDeliveryBadgeClass(o)}">${getDeliveryLabel(o)}</span>`:''}</div></div><table class="dt" style="margin-bottom:12px"><thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${o.items.map(it=>`<tr><td>${it.skuName}${it.rep?`<br><span style="font-size:11px;color:var(--text3)">${it.rep.type==='replace'?'Replacement: '+it.rep.qty+' swapped':'Deduct: -Rs.'+it.rep.deductAmt}</span>`:''}</td><td>${it.qty}</td><td>Rs.${it.price}</td><td style="font-weight:600">Rs.${it.amount}</td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:12px 14px;background:var(--bg2);border-radius:var(--r)"><span style="font-size:13px;color:var(--text2)">Grand Total</span><span style="font-size:17px;font-weight:800">Rs.${o.total.toLocaleString('en-IN')}</span></div>${outstanding>0?`<div style="margin-top:10px;font-size:12px;color:var(--amber);font-weight:600">Outstanding: ${formatCurrency(outstanding)}</div>`:''}${o.note?`<div style="margin-top:10px;font-size:12px;color:var(--text2)">Note: ${o.note}</div>`:''}`;
+  document.getElementById('mo-inv').classList.add('open');
+}
+
+function renderProducts(){
+  document.getElementById('prod-body').innerHTML=PRODUCTS.map(p=>{
+    const m=p.sale-p.cost,pc=p.sale>0?((m/p.sale)*100).toFixed(1):0;
+    return `<tr><td style="font-weight:600">${p.name}</td><td><span class="badge bgr" style="font-family:'DM Mono',monospace">${p.code||'—'}</span></td><td class="mono">Rs.${p.cost}</td><td class="mono">Rs.${p.sale}</td><td class="mono">Rs.${p.retail||'—'}</td><td><span class="badge ${m>=8?'bg':'ba'}">Rs.${m} (${pc}%)</span></td><td style="display:flex;gap:6px"><button class="btn-s sm" onclick="openProductModal('${p.id}')">Edit</button><button class="btn-d sm" onclick="delProduct('${p.id}')">Delete</button></td></tr>`;
+  }).join('');
+}
+function openProductModal(id=null){
+  editProdId=id;
+  document.getElementById('prod-mt').textContent=id?'Edit Product':'Add Product';
+  const p=id?PRODUCTS.find(x=>x.id===id):null;
+  document.getElementById('prod-name').value=p?p.name:'';
+  document.getElementById('prod-cost').value=p?p.cost:'';
+  document.getElementById('prod-sale').value=p?p.sale:'';
+  document.getElementById('prod-retail').value=p?p.retail||'':'';
+  document.getElementById('prod-code').value=p?p.code||'':'';
+  document.getElementById('mo-product').classList.add('open');
+}
+function saveProduct(){
+  const name=document.getElementById('prod-name').value.trim();
+  const cost=parseFloat(document.getElementById('prod-cost').value);
+  const sale=parseFloat(document.getElementById('prod-sale').value);
+  const retail=parseFloat(document.getElementById('prod-retail').value)||sale;
+  const code=document.getElementById('prod-code').value.trim().toUpperCase();
+  if(!name||!cost||!sale){alert('Fill all required fields');return;}
+  if(editProdId){const i=PRODUCTS.findIndex(x=>x.id===editProdId);PRODUCTS[i]={...PRODUCTS[i],name,sale,cost,retail,code};}
+  else PRODUCTS.push({id:'p'+Date.now(),name,sale,cost,retail,code});
+  persistProducts();
+  closeModal('mo-product');renderProducts();
+}
+function delProduct(id){if(!confirm('Delete this product?'))return;PRODUCTS=PRODUCTS.filter(p=>p.id!==id);persistProducts();renderProducts();}
+
+// ── MERCHANTS ──
+function renderMerchants(){
+  const q=(document.getElementById('merch-search').value||'').toLowerCase();
+  document.getElementById('merch-body').innerHTML=MERCHANTS.filter(m=>m.name.toLowerCase().includes(q)||(m.area||'').toLowerCase().includes(q)).map(m=>{
+    const mo=ORDERS.filter(o=>o.merchantId===m.id);
+    const rev=mo.reduce((s,o)=>s+o.total,0);
+    const last=mo.length?new Date(Math.max(...mo.map(o=>new Date(o.time)))).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'-';
+    return `<tr><td style="font-weight:600">${m.name}</td><td>${mo.length}</td><td class="mono">Rs.${rev.toLocaleString('en-IN')}</td><td style="color:var(--text2);font-size:12px">${last}</td><td style="display:flex;gap:6px"><button class="btn-s sm" onclick="openMerchantModal('${m.id}')">Edit</button><button class="btn-d sm" onclick="delMerchant('${m.id}')">Delete</button></td></tr>`;
+  }).join('');
+}
+function openMerchantModal(id=null){
+  editMerchId=id;document.getElementById('merch-mt').textContent=id?'Edit Merchant':'Add Merchant';
+  const m=id?MERCHANTS.find(x=>x.id===id):null;
+  document.getElementById('merch-name').value=m?m.name:'';
+  document.getElementById('merch-area').value=m?m.area||'':'';
+  document.getElementById('merch-phone').value=m?m.phone||'':'';
+  document.getElementById('mo-merchant').classList.add('open');
+}
+function saveMerchant(){
+  const name=document.getElementById('merch-name').value.trim();
+  if(!name){alert('Enter shop name');return;}
+  const area=document.getElementById('merch-area').value.trim();
+  const phone=document.getElementById('merch-phone').value.trim();
+  if(editMerchId){const i=MERCHANTS.findIndex(m=>m.id===editMerchId);MERCHANTS[i]={...MERCHANTS[i],name,area,phone};}
+  else MERCHANTS.push({id:'m'+Date.now(),name,area,phone});
+  persistMerchants();
+  closeModal('mo-merchant');renderMerchants();
+}
+function delMerchant(id){if(!confirm('Delete merchant? Order history is kept.'))return;MERCHANTS=MERCHANTS.filter(m=>m.id!==id);persistMerchants();renderMerchants();}
+
+// ── OPENING BALANCE ──
+function saveOpeningBalance(){
+  const amt=parseFloat(document.getElementById('ob-amount').value)||0;
+  const note=document.getElementById('ob-note').value.trim();
+  const datekey=dk();
+  OPENING_BAL[datekey]={amount:amt,note,time:new Date().toISOString()};
+  persistOpeningBalance();
+  closeModal('mo-opening-bal');
+  renderDashboard();
+  if(curPage==='dsr') renderDSR();
+}
+function checkOpeningBalancePrompt(){
+  const now=new Date();
+  const h=now.getHours(),m=now.getMinutes();
+  // Show at 9 AM (8:55–9:30 window)
+  if(h===9||(h===8&&m>=55)){
+    const datekey=dk();
+    const alreadySet=OPENING_BAL[datekey];
+    const dismissKey='mb_ob_dismiss_'+datekey;
+    const dismissed=localStorage.getItem(dismissKey);
+    if(!alreadySet&&!dismissed){
+      document.getElementById('ob-amount').value='';
+      document.getElementById('ob-note').value='';
+      document.getElementById('mo-opening-bal').classList.add('open');
+      // If user skips, don't re-show for the day
+      const skipBtn=document.querySelector('#mo-opening-bal .btn-s');
+      if(skipBtn) skipBtn.onclick=function(){closeModal('mo-opening-bal');localStorage.setItem(dismissKey,'1');};
+    }
+  }
+}
+
+// ── REMOVE renderStock from refresh if called ──
+function renderStock(){} // stub - page removed
+
+// ── PDF ──
+function dlPDF(id){
+  const o=ORDERS.find(x=>x.id===id);if(!o)return;
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});const W=doc.internal.pageSize.getWidth();
+  doc.setFillColor(15,15,15);doc.rect(0,0,W,26,'F');doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('ModernBread',12,11);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Distribution Invoice',12,18);
+  doc.text(o.id,W-12,11,{align:'right'});doc.text(new Date(o.time).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),W-12,18,{align:'right'});
+  doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text('Bill To',12,34);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text(o.merchantName,12,40);
+  const pm={cash:'Cash (Collected)',upi:'UPI / Online (Paid)',credit:'Credit (Collect Later)'};
+  doc.setFont('helvetica','bold');doc.text('Payment',W-55,34);doc.setFont('helvetica','normal');doc.text(pm[o.payment]||o.payment,W-55,40);
+  const body=[];
+  o.items.forEach(it=>{body.push([it.skuName,it.qty,`Rs.${it.price}`,`Rs.${it.amount}`]);if(it.rep){if(it.rep.type==='replace')body.push([`  Replacement: ${it.rep.qty} units swapped`,'','','']);else body.push([`  Replacement deduct (${it.rep.qty})`,'','',`-Rs.${it.rep.deductAmt}`]);}});
+  doc.autoTable({startY:50,head:[['Product','Qty','Rate','Amount']],body,foot:[['','','Total',`Rs.${o.total}`]],headStyles:{fillColor:[15,15,15],textColor:255,fontStyle:'bold',fontSize:9},footStyles:{fillColor:[240,240,240],textColor:[15,15,15],fontStyle:'bold',fontSize:10},bodyStyles:{fontSize:9,textColor:[30,30,30]},alternateRowStyles:{fillColor:[250,250,250]},columnStyles:{0:{cellWidth:'auto'},1:{halign:'center',cellWidth:14},2:{halign:'right',cellWidth:22},3:{halign:'right',cellWidth:26}},margin:{left:12,right:12},styles:{font:'helvetica',cellPadding:3}});
+  if(o.note){doc.setFontSize(8);doc.setTextColor(120,120,120);doc.text(`Note: ${o.note}`,12,doc.lastAutoTable.finalY+6);}
+  doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text('Thank you for your business.',W/2,doc.internal.pageSize.getHeight()-8,{align:'center'});
+  doc.save(`Invoice-${o.merchantName.replace(/\s+/g,'-')}-${o.id}.pdf`);
+}
+function exportReport(){
+  const ords=filterItems(ORDERS),exps=filterItems(EXPENSES);
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=doc.internal.pageSize.getWidth();
+  doc.setFillColor(15,15,15);doc.rect(0,0,W,28,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('ModernBread — Report',14,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Period: ${calLabel()} · Generated: ${new Date().toLocaleDateString('en-IN')}`,14,21);
+  const rev=ords.reduce((s,o)=>s+o.total,0),cogs=ords.reduce((s,o)=>s+o.items.reduce((ss,it)=>{const p=PRODUCTS.find(x=>x.id===it.skuId);return ss+(it.qty*(p?p.cost:0));},0),0),exp=exps.reduce((s,e)=>s+e.amount,0),np=rev-cogs-exp;
+  doc.setTextColor(30,30,30);
+  doc.autoTable({startY:36,head:[['Metric','Value']],body:[['Gross Revenue',`Rs.${rev.toLocaleString('en-IN')}`],['COGS',`Rs.${cogs.toLocaleString('en-IN')}`],['Agent Expenses',`Rs.${exp.toLocaleString('en-IN')}`],[np<0?'Net Loss':'Net Profit',`Rs.${Math.abs(np).toLocaleString('en-IN')}`],['Total Orders',ords.length],['Credit Pending',formatCurrency(ords.reduce((s,o)=>s+getOrderOutstanding(o),0))]],headStyles:{fillColor:[15,15,15],textColor:255,fontSize:9,fontStyle:'bold'},bodyStyles:{fontSize:9},columnStyles:{1:{halign:'right'}},margin:{left:14,right:14}});
+  doc.autoTable({startY:doc.lastAutoTable.finalY+10,head:[['Invoice ID','Merchant','Date','Amount','Payment']],body:ords.sort((a,b)=>new Date(b.time)-new Date(a.time)).map(o=>[o.id,o.merchantName,new Date(o.time).toLocaleDateString('en-IN'),`Rs.${o.total}`,o.payment]),headStyles:{fillColor:[15,15,15],textColor:255,fontSize:8,fontStyle:'bold'},bodyStyles:{fontSize:8},margin:{left:14,right:14}});
+  doc.save(`ModernBread-${calLabel().replace(/\s/g,'-')}.pdf`);
+}
+function triggerDatasetUpload(){
+  const input=document.getElementById('dataset-upload');
+  if(!input) return;
+  input.value='';
+  input.click();
+}
+function importDatasetFile(event){
+  const file=event.target.files?.[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const raw=JSON.parse(String(reader.result||'{}'));
+      const dataset=normalizeImportedDataset(raw);
+      if(!confirm(`Import dataset "${file.name}"?\n\nThis will replace the current admin, stock, expense, order, and DSR demo data.`)) return;
+      applyImportedDataset(dataset);
+      alert(`Dataset imported successfully.\nProducts: ${PRODUCTS.length}\nMerchants: ${MERCHANTS.length}\nOrders: ${ORDERS.length}\nExpenses: ${EXPENSES.length}`);
+    }catch(err){
+      alert(`Import failed: ${err.message||err}`);
+    }finally{
+      event.target.value='';
+    }
+  };
+  reader.readAsText(file);
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+window.addEventListener('storage',e=>{
+  if(!Object.values(STORAGE_KEYS).includes(e.key)) return;
+  refreshSharedState();
+});
+window.addEventListener('focus',refreshSharedState);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible') refreshSharedState();
+});
+
+// BOOT
+syncStateFromStorage();
+if(!sharedSyncTimer) sharedSyncTimer=setInterval(refreshSharedState, 3000);
+renderCalGrid();
+document.getElementById('cal-label').textContent='Today';
+renderDashboard();renderProducts();renderMerchants();
+checkOpeningBalancePrompt();
+setInterval(checkOpeningBalancePrompt, 60000);
+</script>
+</body>
+</html>

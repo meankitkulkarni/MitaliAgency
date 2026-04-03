@@ -1,0 +1,451 @@
+{
+  "meta": {
+    "name": "ModernBread Showcase Dataset",
+    "createdFor": "Admin panel demo import",
+    "dateRange": "2026-04-01 to 2026-04-04"
+  },
+  "products": [
+    { "id": "p-bb400", "name": "Brown Bread 400g", "cost": 24, "sale": 32, "retail": 38, "code": "BB4" },
+    { "id": "p-milk", "name": "Milk Bread 400g", "cost": 22, "sale": 30, "retail": 36, "code": "MB4" },
+    { "id": "p-sandwich", "name": "Sandwich Bread", "cost": 28, "sale": 37, "retail": 44, "code": "SW" },
+    { "id": "p-pav", "name": "Ladi Pav", "cost": 18, "sale": 25, "retail": 30, "code": "LP" },
+    { "id": "p-bun", "name": "Burger Bun Pack", "cost": 26, "sale": 34, "retail": 40, "code": "BBN" },
+    { "id": "p-cake", "name": "Fruit Cake Slice", "cost": 15, "sale": 22, "retail": 28, "code": "FCS" }
+  ],
+  "merchants": [
+    { "id": "m-001", "name": "Shiv Bakery", "area": "Main Road", "phone": "9876500001" },
+    { "id": "m-002", "name": "Mahalaxmi Stores", "area": "Market Line", "phone": "9876500002" },
+    { "id": "m-003", "name": "Fresh Bite Cafe", "area": "Station Road", "phone": "9876500003" },
+    { "id": "m-004", "name": "Annapurna Mart", "area": "College Corner", "phone": "9876500004" },
+    { "id": "m-005", "name": "Royal Tea Point", "area": "Bus Stand", "phone": "9876500005" },
+    { "id": "m-006", "name": "Sai Krupa Super Shop", "area": "Temple Street", "phone": "9876500006" },
+    { "id": "m-007", "name": "Nisarg Snacks", "area": "Highway Naka", "phone": "9876500007" },
+    { "id": "m-008", "name": "City Bakers Hub", "area": "Old Bazaar", "phone": "9876500008" },
+    { "id": "m-009", "name": "Happy Corner", "area": "Society Gate", "phone": "9876500009" },
+    { "id": "m-010", "name": "Roha Refreshments", "area": "Court Road", "phone": "9876500010" }
+  ],
+  "stockEntries": {
+    "2026-04-01": {
+      "p-bb400": 42,
+      "p-milk": 46,
+      "p-sandwich": 24,
+      "p-pav": 64,
+      "p-bun": 30,
+      "p-cake": 50
+    },
+    "2026-04-02": {
+      "p-bb400": 48,
+      "p-milk": 52,
+      "p-sandwich": 28,
+      "p-pav": 68,
+      "p-bun": 34,
+      "p-cake": 54
+    },
+    "2026-04-03": {
+      "p-bb400": 54,
+      "p-milk": 58,
+      "p-sandwich": 32,
+      "p-pav": 72,
+      "p-bun": 38,
+      "p-cake": 60
+    },
+    "2026-04-04": {
+      "p-bb400": 60,
+      "p-milk": 64,
+      "p-sandwich": 36,
+      "p-pav": 80,
+      "p-bun": 40,
+      "p-cake": 66
+    }
+  },
+  "trays": {
+    "2026-04-01": { "full": 22, "empty": 17 },
+    "2026-04-02": { "full": 24, "empty": 19 },
+    "2026-04-03": { "full": 26, "empty": 22 },
+    "2026-04-04": { "full": 29, "empty": 24 }
+  },
+  "openingBalance": {
+    "2026-04-01": { "amount": 5400, "note": "Week opening float", "time": "2026-04-01T08:58:00.000Z" },
+    "2026-04-02": { "amount": 6180, "note": "Carry forward after bank drop", "time": "2026-04-02T08:57:00.000Z" },
+    "2026-04-03": { "amount": 6725, "note": "Festival weekend demand", "time": "2026-04-03T09:01:00.000Z" },
+    "2026-04-04": { "amount": 7350, "note": "Showcase demo opening cash", "time": "2026-04-04T08:55:00.000Z" }
+  },
+  "expenses": [
+    { "id": "EXP-260401-1", "desc": "Auto fuel", "amount": 420, "time": "2026-04-01T06:50:00.000Z" },
+    { "id": "EXP-260401-2", "desc": "Tea and breakfast", "amount": 140, "time": "2026-04-01T08:10:00.000Z" },
+    { "id": "EXP-260402-1", "desc": "Vehicle puncture repair", "amount": 280, "time": "2026-04-02T09:45:00.000Z" },
+    { "id": "EXP-260402-2", "desc": "Helper snacks", "amount": 120, "time": "2026-04-02T12:15:00.000Z" },
+    { "id": "EXP-260403-1", "desc": "Auto fuel", "amount": 450, "time": "2026-04-03T07:10:00.000Z" },
+    { "id": "EXP-260403-2", "desc": "Rain cover sheets", "amount": 190, "time": "2026-04-03T11:25:00.000Z" },
+    { "id": "EXP-260404-1", "desc": "Auto fuel", "amount": 460, "time": "2026-04-04T07:05:00.000Z" },
+    { "id": "EXP-260404-2", "desc": "Packaging tape", "amount": 165, "time": "2026-04-04T10:40:00.000Z" },
+    { "id": "EXP-260404-3", "desc": "Tea and water", "amount": 130, "time": "2026-04-04T13:05:00.000Z" }
+  ],
+  "creditPayments": [
+    {
+      "id": "CP-260403-1",
+      "merchantId": "m-002",
+      "merchantName": "Mahalaxmi Stores",
+      "amount": 520,
+      "mode": "upi",
+      "time": "2026-04-03T12:40:00.000Z",
+      "allocations": [
+        { "orderId": "ORD-260401-002", "amount": 520 }
+      ]
+    },
+    {
+      "id": "CP-260404-1",
+      "merchantId": "m-007",
+      "merchantName": "Nisarg Snacks",
+      "amount": 420,
+      "mode": "cash",
+      "time": "2026-04-04T11:15:00.000Z",
+      "allocations": [
+        { "orderId": "ORD-260402-007", "amount": 420 }
+      ]
+    },
+    {
+      "id": "CP-260404-2",
+      "merchantId": "m-004",
+      "merchantName": "Annapurna Mart",
+      "amount": 300,
+      "mode": "upi",
+      "time": "2026-04-04T15:20:00.000Z",
+      "allocations": [
+        { "orderId": "ORD-260403-004", "amount": 300 }
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-260401-001",
+      "merchantId": "m-001",
+      "merchantName": "Shiv Bakery",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 5, "price": 32, "amount": 160, "rep": null },
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 4, "price": 30, "amount": 120, "rep": null }
+      ],
+      "total": 280,
+      "payment": "cash",
+      "creditPaid": 280,
+      "note": "Morning rush",
+      "time": "2026-04-01T03:50:00.000Z"
+    },
+    {
+      "id": "ORD-260401-002",
+      "merchantId": "m-002",
+      "merchantName": "Mahalaxmi Stores",
+      "items": [
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 8, "price": 25, "amount": 200, "rep": null },
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 6, "price": 34, "amount": 204, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 6, "price": 22, "amount": 132, "rep": null }
+      ],
+      "total": 536,
+      "payment": "credit",
+      "creditPaid": 520,
+      "note": "Weekly credit cycle",
+      "time": "2026-04-01T04:20:00.000Z"
+    },
+    {
+      "id": "ORD-260401-003",
+      "merchantId": "m-003",
+      "merchantName": "Fresh Bite Cafe",
+      "items": [
+        { "skuId": "p-sandwich", "skuName": "Sandwich Bread", "qty": 5, "price": 37, "amount": 185, "rep": null },
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 3, "price": 32, "amount": 96, "rep": null }
+      ],
+      "total": 281,
+      "payment": "upi",
+      "creditPaid": 281,
+      "note": "",
+      "time": "2026-04-01T05:10:00.000Z"
+    },
+    {
+      "id": "RET-260401-1",
+      "merchantId": "retail",
+      "merchantName": "Retail Customer",
+      "type": "retail",
+      "items": [
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 5, "price": 28, "amount": 140, "rep": null },
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 2, "price": 36, "amount": 72, "rep": null }
+      ],
+      "total": 212,
+      "payment": "cash",
+      "creditPaid": 212,
+      "note": "Counter sale",
+      "time": "2026-04-01T12:30:00.000Z"
+    },
+    {
+      "id": "ORD-260402-004",
+      "merchantId": "m-004",
+      "merchantName": "Annapurna Mart",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 6, "price": 32, "amount": 192, "rep": null },
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 10, "price": 25, "amount": 250, "rep": null }
+      ],
+      "total": 442,
+      "payment": "cash",
+      "creditPaid": 442,
+      "note": "",
+      "time": "2026-04-02T04:00:00.000Z"
+    },
+    {
+      "id": "ORD-260402-005",
+      "merchantId": "m-005",
+      "merchantName": "Royal Tea Point",
+      "items": [
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 12, "price": 25, "amount": 300, "rep": null },
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 4, "price": 34, "amount": 136, "rep": null }
+      ],
+      "total": 436,
+      "payment": "cash",
+      "creditPaid": 436,
+      "note": "Evening snack sale",
+      "time": "2026-04-02T04:35:00.000Z"
+    },
+    {
+      "id": "ORD-260402-006",
+      "merchantId": "m-006",
+      "merchantName": "Sai Krupa Super Shop",
+      "items": [
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 7, "price": 30, "amount": 210, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 8, "price": 22, "amount": 176, "rep": null }
+      ],
+      "total": 386,
+      "payment": "upi",
+      "creditPaid": 386,
+      "note": "",
+      "time": "2026-04-02T05:05:00.000Z"
+    },
+    {
+      "id": "ORD-260402-007",
+      "merchantId": "m-007",
+      "merchantName": "Nisarg Snacks",
+      "items": [
+        { "skuId": "p-sandwich", "skuName": "Sandwich Bread", "qty": 4, "price": 37, "amount": 148, "rep": null },
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 5, "price": 32, "amount": 160, "rep": null },
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 5, "price": 25, "amount": 125, "rep": null }
+      ],
+      "total": 433,
+      "payment": "credit",
+      "creditPaid": 420,
+      "note": "Pending balance left small",
+      "time": "2026-04-02T05:45:00.000Z"
+    },
+    {
+      "id": "RET-260402-1",
+      "merchantId": "retail",
+      "merchantName": "Retail Customer",
+      "type": "retail",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 3, "price": 38, "amount": 114, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 4, "price": 28, "amount": 112, "rep": null }
+      ],
+      "total": 226,
+      "payment": "upi",
+      "creditPaid": 226,
+      "note": "Walk-in customer",
+      "time": "2026-04-02T13:05:00.000Z"
+    },
+    {
+      "id": "ORD-260403-001",
+      "merchantId": "m-001",
+      "merchantName": "Shiv Bakery",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 6, "price": 32, "amount": 192, "rep": { "type": "replace", "qty": 1 } },
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 5, "price": 30, "amount": 150, "rep": null }
+      ],
+      "total": 342,
+      "payment": "cash",
+      "creditPaid": 342,
+      "note": "One unit replaced",
+      "time": "2026-04-03T03:45:00.000Z"
+    },
+    {
+      "id": "ORD-260403-002",
+      "merchantId": "m-008",
+      "merchantName": "City Bakers Hub",
+      "items": [
+        { "skuId": "p-sandwich", "skuName": "Sandwich Bread", "qty": 6, "price": 37, "amount": 222, "rep": null },
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 5, "price": 34, "amount": 170, "rep": null }
+      ],
+      "total": 392,
+      "payment": "upi",
+      "creditPaid": 392,
+      "note": "",
+      "time": "2026-04-03T04:30:00.000Z"
+    },
+    {
+      "id": "ORD-260403-003",
+      "merchantId": "m-009",
+      "merchantName": "Happy Corner",
+      "items": [
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 9, "price": 25, "amount": 225, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 7, "price": 22, "amount": 154, "rep": null }
+      ],
+      "total": 379,
+      "payment": "cash",
+      "creditPaid": 379,
+      "note": "",
+      "time": "2026-04-03T05:00:00.000Z"
+    },
+    {
+      "id": "ORD-260403-004",
+      "merchantId": "m-004",
+      "merchantName": "Annapurna Mart",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 7, "price": 32, "amount": 224, "rep": null },
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 6, "price": 30, "amount": 180, "rep": null }
+      ],
+      "total": 404,
+      "payment": "credit",
+      "creditPaid": 300,
+      "note": "Partial balance collected later",
+      "time": "2026-04-03T05:20:00.000Z"
+    },
+    {
+      "id": "ORD-260403-005",
+      "merchantId": "m-010",
+      "merchantName": "Roha Refreshments",
+      "items": [
+        { "skuId": "p-sandwich", "skuName": "Sandwich Bread", "qty": 5, "price": 37, "amount": 185, "rep": null },
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 8, "price": 25, "amount": 200, "rep": null }
+      ],
+      "total": 385,
+      "payment": "upi",
+      "creditPaid": 385,
+      "note": "",
+      "time": "2026-04-03T06:00:00.000Z"
+    },
+    {
+      "id": "RET-260403-1",
+      "merchantId": "retail",
+      "merchantName": "Retail Customer",
+      "type": "retail",
+      "items": [
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 3, "price": 40, "amount": 120, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 6, "price": 28, "amount": 168, "rep": null }
+      ],
+      "total": 288,
+      "payment": "cash",
+      "creditPaid": 288,
+      "note": "Festival crowd",
+      "time": "2026-04-03T14:10:00.000Z"
+    },
+    {
+      "id": "ORD-260404-001",
+      "merchantId": "m-001",
+      "merchantName": "Shiv Bakery",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 8, "price": 32, "amount": 256, "rep": null },
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 6, "price": 30, "amount": 180, "rep": null }
+      ],
+      "total": 436,
+      "payment": "cash",
+      "creditPaid": 436,
+      "note": "Strong Saturday demand",
+      "time": "2026-04-04T03:40:00.000Z"
+    },
+    {
+      "id": "ORD-260404-002",
+      "merchantId": "m-003",
+      "merchantName": "Fresh Bite Cafe",
+      "items": [
+        { "skuId": "p-sandwich", "skuName": "Sandwich Bread", "qty": 7, "price": 37, "amount": 259, "rep": null },
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 4, "price": 34, "amount": 136, "rep": null }
+      ],
+      "total": 395,
+      "payment": "upi",
+      "creditPaid": 395,
+      "note": "",
+      "time": "2026-04-04T04:05:00.000Z"
+    },
+    {
+      "id": "ORD-260404-003",
+      "merchantId": "m-005",
+      "merchantName": "Royal Tea Point",
+      "items": [
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 14, "price": 25, "amount": 350, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 5, "price": 22, "amount": 110, "rep": null }
+      ],
+      "total": 460,
+      "payment": "cash",
+      "creditPaid": 460,
+      "note": "",
+      "time": "2026-04-04T04:20:00.000Z"
+    },
+    {
+      "id": "ORD-260404-004",
+      "merchantId": "m-006",
+      "merchantName": "Sai Krupa Super Shop",
+      "items": [
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 8, "price": 30, "amount": 240, "rep": null },
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 6, "price": 32, "amount": 192, "rep": null }
+      ],
+      "total": 432,
+      "payment": "credit",
+      "creditPaid": 0,
+      "note": "Month-end credit",
+      "time": "2026-04-04T04:40:00.000Z"
+    },
+    {
+      "id": "ORD-260404-005",
+      "merchantId": "m-008",
+      "merchantName": "City Bakers Hub",
+      "items": [
+        { "skuId": "p-sandwich", "skuName": "Sandwich Bread", "qty": 6, "price": 37, "amount": 222, "rep": { "type": "deduct", "qty": 1, "deductAmt": 37 } },
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 5, "price": 34, "amount": 170, "rep": null }
+      ],
+      "total": 392,
+      "payment": "upi",
+      "creditPaid": 392,
+      "note": "One stale sandwich loaf deducted",
+      "time": "2026-04-04T05:05:00.000Z"
+    },
+    {
+      "id": "ORD-260404-006",
+      "merchantId": "m-009",
+      "merchantName": "Happy Corner",
+      "items": [
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 10, "price": 25, "amount": 250, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 8, "price": 22, "amount": 176, "rep": null }
+      ],
+      "total": 426,
+      "payment": "cash",
+      "creditPaid": 426,
+      "note": "",
+      "time": "2026-04-04T05:30:00.000Z"
+    },
+    {
+      "id": "ORD-260404-007",
+      "merchantId": "m-010",
+      "merchantName": "Roha Refreshments",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 5, "price": 32, "amount": 160, "rep": null },
+        { "skuId": "p-milk", "skuName": "Milk Bread 400g", "qty": 5, "price": 30, "amount": 150, "rep": null },
+        { "skuId": "p-pav", "skuName": "Ladi Pav", "qty": 7, "price": 25, "amount": 175, "rep": null }
+      ],
+      "total": 485,
+      "payment": "upi",
+      "creditPaid": 485,
+      "note": "",
+      "time": "2026-04-04T06:10:00.000Z"
+    },
+    {
+      "id": "RET-260404-1",
+      "merchantId": "retail",
+      "merchantName": "Retail Customer",
+      "type": "retail",
+      "items": [
+        { "skuId": "p-bb400", "skuName": "Brown Bread 400g", "qty": 4, "price": 38, "amount": 152, "rep": null },
+        { "skuId": "p-cake", "skuName": "Fruit Cake Slice", "qty": 6, "price": 28, "amount": 168, "rep": null },
+        { "skuId": "p-bun", "skuName": "Burger Bun Pack", "qty": 2, "price": 40, "amount": 80, "rep": null }
+      ],
+      "total": 400,
+      "payment": "cash",
+      "creditPaid": 400,
+      "note": "Counter bundle sale",
+      "time": "2026-04-04T14:00:00.000Z"
+    }
+  ]
+}
