@@ -130,6 +130,7 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
 .btn-iconized svg{width:16px;height:16px;stroke-width:2;flex-shrink:0}
 .btn-iconized.btn-p svg{stroke:#fff}
 .btn-iconized.btn-d svg{stroke:currentColor}
+.btn-s>svg,.btn-p>svg,.btn-d>svg{width:16px;height:16px;stroke-width:2;vertical-align:middle}
 /* STATS */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .stat-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
@@ -505,6 +506,7 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
         <div id="dsr-lock-status" style="font-size:11px;color:var(--text3);margin-top:4px">Draft snapshot auto-saves while unlocked</div>
       </div>
       <div style="display:flex;gap:8px;">
+        <button class="btn-s sm" title="Daily replacements" aria-label="Daily replacements" onclick="openDailyReplacementModal()"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
         <button class="btn-s sm" onclick="renderDSR()">Refresh</button>
         <button class="btn-s sm" id="dsr-lock-btn" onclick="lockDSR()">Lock DSR</button>
         <button class="btn-p sm" onclick="downloadDSR()">⬇ Download Excel</button>
@@ -696,6 +698,13 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
   <div class="mt" id="inv-mt">Invoice</div>
   <div id="inv-mbody"></div>
   <div class="mf"><button class="btn-d" onclick="deleteInvFromModal()">Delete</button><button class="btn-s" onclick="closeModal('mo-inv')">Close</button><button class="btn-s" onclick="shareInvFromModal()">WhatsApp</button><button class="btn-p" onclick="dlFromModal()">Download PDF</button></div>
+</div></div>
+
+<div class="mo" id="mo-day-replacements"><div class="md" style="width:680px">
+  <div class="mt" id="day-rep-title">Daily Replacements</div>
+  <div id="day-rep-summary" style="font-size:12px;color:var(--text2);margin-bottom:14px"></div>
+  <div id="day-rep-body"></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-day-replacements')">Close</button></div>
 </div></div>
 
 <!-- ADD ORDER MODAL - Step 1: Merchant Selection -->
@@ -1532,6 +1541,35 @@ async function deleteOrder(id){
   }
 }
 function deleteInvFromModal(){if(activeInv)deleteOrder(activeInv.id);}
+
+function dailyReplacementRows(date=getDSRDate()){
+  const dayOrds=ORDERS.filter(o=>new Date(o.time).toDateString()===date.toDateString()&&o.type!=='retail');
+  const byProduct={};
+  dayOrds.forEach(o=>o.items.forEach(it=>{
+    if(!it.rep||!it.rep.qty)return;
+    const p=PRODUCTS.find(x=>x.id===it.skuId);
+    const key=it.skuId||it.skuName;
+    if(!byProduct[key])byProduct[key]={product:p,name:it.skuName,code:p?.code||'',qty:0,value:0,orders:[]};
+    const qty=Number(it.rep.qty||0);
+    const rate=Number(it.price||p?.sale||0);
+    byProduct[key].qty+=qty;
+    byProduct[key].value+=qty*rate;
+    byProduct[key].orders.push({merchant:o.merchantName,invoice:orderDisplayId(o),qty,rate,type:it.rep.type});
+  }));
+  return Object.values(byProduct).sort((a,b)=>b.qty-a.qty||a.name.localeCompare(b.name));
+}
+function openDailyReplacementModal(){
+  const date=getDSRDate();
+  const rows=dailyReplacementRows(date);
+  const totalQty=rows.reduce((s,r)=>s+r.qty,0);
+  const totalVal=rows.reduce((s,r)=>s+r.value,0);
+  document.getElementById('day-rep-title').textContent=`Replacements — ${date.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}`;
+  document.getElementById('day-rep-summary').textContent=`${totalQty} unit${totalQty!==1?'s':''} replaced · Rs. ${totalVal.toLocaleString('en-IN')} value`;
+  document.getElementById('day-rep-body').innerHTML=rows.length
+    ?`<table class="dt"><thead><tr><th>Product</th><th>DSR Code</th><th>Units</th><th>Value</th><th>Merchant / Invoice</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="font-weight:700">${r.name}</td><td><span class="badge bgr mono">${r.code||'—'}</span></td><td class="mono" style="color:var(--amber);font-weight:700">${r.qty}</td><td class="mono" style="color:var(--red);font-weight:700">Rs.${r.value.toLocaleString('en-IN')}</td><td>${r.orders.map(o=>`<div style="font-size:12px;margin-bottom:3px"><span style="font-weight:600">${o.merchant}</span> <span class="mono" style="color:var(--text3)">${o.invoice}</span> · ${o.qty} unit${o.qty!==1?'s':''}</div>`).join('')}</td></tr>`).join('')}</tbody></table>`
+    :`<div class="empty"><div class="empty-title">No replacements for this day</div><div style="font-size:12px;color:var(--text3)">Replacement entries from merchant orders will appear here.</div></div>`;
+  document.getElementById('mo-day-replacements').classList.add('open');
+}
 
 // ── REPORTS ──
 function showReport(type){
