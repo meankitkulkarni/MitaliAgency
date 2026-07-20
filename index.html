@@ -474,9 +474,11 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
       <div>
         <div style="font-size:16px;font-weight:800;letter-spacing:-.2px" id="dsr-date-label">DSR — Today</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px">Mitali Agency, Roha-Raigad · Modern Bread</div>
+        <div id="dsr-lock-status" style="font-size:11px;color:var(--text3);margin-top:4px">Draft snapshot auto-saves while unlocked</div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-s sm" onclick="renderDSR()">Refresh</button>
+        <button class="btn-s sm" id="dsr-lock-btn" onclick="lockDSR()">Lock DSR</button>
         <button class="btn-p sm" onclick="downloadDSR()">⬇ Download Excel</button>
       </div>
     </div>
@@ -794,7 +796,7 @@ let DSR_SNAPSHOTS = {};
 // ── STATE ──
 let curPage='dashboard', curFilter={type:'today',date:new Date()};
 let calView=new Date(), editProdId=null, editMerchId=null, activeInv=null, activeReport=null, revChart=null, editOrderId=null;
-let lastDSRSaveSig='';
+let lastDSRSaveSig='', latestDSRSnapshot=null;
 // Admin add-order flow state
 let adminOrderMerchant=null, adminOrderSKUIdx=0, adminOrderItems={}, adminOrderPayMode='cash';
 
@@ -1582,10 +1584,56 @@ function renderDSR(){
       openingBalance:OPENING_BAL[datekey]?datekey:null
     }
   };
+  latestDSRSnapshot=dsrSnapshot;
+  updateDSRLockUi(datekey, DSR_SNAPSHOTS[datekey]);
   const dsrSig=JSON.stringify(dsrSnapshot);
-  if(lastDSRSaveSig!==datekey+dsrSig){
+  if(!DSR_SNAPSHOTS[datekey]?.lockedAt && lastDSRSaveSig!==datekey+dsrSig){
     lastDSRSaveSig=datekey+dsrSig;
     db.collection('dailyDsr').doc(datekey).set(dsrSnapshot).catch(console.error);
+  }
+}
+
+function updateDSRLockUi(datekey, snapshot){
+  const status=document.getElementById('dsr-lock-status');
+  const btn=document.getElementById('dsr-lock-btn');
+  if(!status||!btn) return;
+  if(snapshot&&snapshot.lockedAt){
+    const lockedAt=new Date(snapshot.lockedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    status.textContent=`Locked snapshot saved for ${datekey} at ${lockedAt}. It will not be overwritten.`;
+    status.style.color='var(--green)';
+    btn.textContent='DSR Locked';
+    btn.disabled=true;
+    btn.style.opacity='.55';
+    btn.style.cursor='not-allowed';
+  }else{
+    status.textContent='Draft snapshot auto-saves while unlocked';
+    status.style.color='var(--text3)';
+    btn.textContent='Lock DSR';
+    btn.disabled=false;
+    btn.style.opacity='1';
+    btn.style.cursor='pointer';
+  }
+}
+
+async function lockDSR(){
+  const date=getDSRDate();
+  const datekey=dk(date);
+  if(DSR_SNAPSHOTS[datekey]?.lockedAt){
+    updateDSRLockUi(datekey, DSR_SNAPSHOTS[datekey]);
+    return;
+  }
+  if(!latestDSRSnapshot||latestDSRSnapshot.date!==datekey) renderDSR();
+  const snapshot={...(latestDSRSnapshot||{}),lockedAt:new Date().toISOString(),locked:true};
+  if(!snapshot.id) snapshot.id=datekey;
+  if(!confirm(`Lock DSR for ${datekey}? This prevents the saved daily snapshot from being overwritten.`)) return;
+  try{
+    await db.collection('dailyDsr').doc(datekey).set(snapshot);
+    DSR_SNAPSHOTS[datekey]=snapshot;
+    updateDSRLockUi(datekey, snapshot);
+    alert('DSR locked and saved.');
+  }catch(err){
+    console.error(err);
+    alert('Could not lock DSR. Please try again.');
   }
 }
 
