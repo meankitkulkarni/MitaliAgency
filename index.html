@@ -56,6 +56,10 @@ function startListeners(){
     if(curPage==='dashboard')renderDashboard();
     else if(curPage==='dsr')renderDSR();
   });
+  db.collection('dailyDsr').onSnapshot(snap=>{
+    DSR_SNAPSHOTS={};snap.docs.forEach(d=>{DSR_SNAPSHOTS[d.id]=d.data();});
+    renderCalGrid();
+  });
 }
 </script>
 <style>
@@ -753,6 +757,7 @@ let EXPENSES = [];
 let SE       = {};
 let TRAYS    = {};
 let OPENING_BAL = {};
+let DSR_SNAPSHOTS = {};
 // Legacy localStorage fallback (used only until Firestore hydrates)
 (()=>{
   try{
@@ -788,6 +793,7 @@ let OPENING_BAL = {};
 // ── STATE ──
 let curPage='dashboard', curFilter={type:'today',date:new Date()};
 let calView=new Date(), editProdId=null, editMerchId=null, activeInv=null, activeReport=null, revChart=null, editOrderId=null;
+let lastDSRSaveSig='';
 // Admin add-order flow state
 let adminOrderMerchant=null, adminOrderSKUIdx=0, adminOrderItems={}, adminOrderPayMode='cash';
 
@@ -823,6 +829,7 @@ function renderCalGrid(){
   document.getElementById('cal-month').textContent=new Date(y,m,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   const first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), today=new Date();
   const dataDays=new Set([...ORDERS,...EXPENSES].map(o=>dk(new Date(o.time))));
+  Object.keys(DSR_SNAPSHOTS||{}).forEach(k=>dataDays.add(k));
   let h='';
   ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>h+=`<div class="cal-dh">${d}</div>`);
   for(let i=0;i<first;i++) h+=`<div class="cal-d cal-empty"></div>`;
@@ -1546,6 +1553,38 @@ function renderDSR(){
     bpEl.innerHTML=`<div class="empty"><div class="empty-title">No pending credits</div></div>`;
   } else {
     bpEl.innerHTML=`<table class="dt"><thead><tr><th>Merchant</th><th>Orders</th><th>Outstanding</th><th>Action</th></tr></thead><tbody>${bpEntries.map(e=>`<tr><td style="font-weight:600">${e.name}</td><td style="color:var(--text2);font-size:12px">${e.orders.length} credit order${e.orders.length>1?'s':''}</td><td class="mono" style="color:var(--amber);font-weight:700">Rs.${e.total.toLocaleString('en-IN')}</td><td><button class="btn-s sm" onclick="openCreditPayModal('${e.orders[0].merchantId}')">Record Payment</button></td></tr>`).join('')}</tbody></table>`;
+  }
+
+  const dsrSnapshot={
+    id:datekey,
+    date:datekey,
+    dateLabel:dateStr,
+    generatedAt:new Date().toISOString(),
+    summary:{
+      openingBal,totalBill,cashRec,creditTotal,retailTotal,totalExpD,cashInHand,
+      merchantBill:totBill,merchantCash:totCash,merchantCredit:totCredit,replacementUnits:totRepl,
+      openingBalanceSource:obSource
+    },
+    routeRows:dsrRows.map(r=>({
+      merchantId:r.m.id,merchantName:r.m.name,area:r.m.area||'',prodQtys:r.prodQtys,repQtys:r.repQtys,
+      bill:r.bill,prevBal:r.prevBal,cashCollected:r.cashCollected,creditLeft:r.creditLeft,totalDue:r.totalDue,
+      hasActivity:r.hasActivity
+    })),
+    retail:{orders:retailOrds,total:retailTotal},
+    replacements:repRows.map(r=>({productId:r.p.id,productName:r.p.name,qty:r.totalRep,value:r.val})),
+    trays:{full:tray.full||0,empty:tray.empty||0},
+    sourceIds:{
+      orders:dayOrds.map(o=>o.id),
+      expenses:dayExps.map(e=>e.id),
+      stockEntry:SE[datekey]?datekey:null,
+      trays:TRAYS[datekey]?datekey:null,
+      openingBalance:OPENING_BAL[datekey]?datekey:null
+    }
+  };
+  const dsrSig=JSON.stringify(dsrSnapshot);
+  if(lastDSRSaveSig!==datekey+dsrSig){
+    lastDSRSaveSig=datekey+dsrSig;
+    db.collection('dailyDsr').doc(datekey).set(dsrSnapshot).catch(console.error);
   }
 }
 
