@@ -802,6 +802,14 @@ let adminOrderMerchant=null, adminOrderSKUIdx=0, adminOrderItems={}, adminOrderP
 
 // ── UTILS ──
 function dk(d){ return (d||new Date()).toISOString().slice(0,10); }
+function isPaymentReceived(o){ return o&&o.payment!=='credit'&&o.paymentStatus!=='pending'; }
+function isPaymentPending(o){ return !isPaymentReceived(o); }
+function paymentStatusText(o){
+  if(!o) return '—';
+  if(o.payment==='credit') return 'Pending';
+  if(o.payment==='upi'&&o.paymentStatus==='pending') return 'Awaiting UPI';
+  return 'Paid';
+}
 function filterItems(arr){
   const f=curFilter;
   return arr.filter(o=>{
@@ -906,7 +914,7 @@ function renderDashboard(){
   const cogs=ords.reduce((s,o)=>s+o.items.reduce((ss,it)=>{const p=PRODUCTS.find(x=>x.id===it.skuId);return ss+(it.qty*(p?p.cost:0));},0),0);
   const totalExp=exps.reduce((s,e)=>s+e.amount,0);
   const gp=rev-cogs, np=gp-totalExp;
-  const cords=ords.filter(o=>o.payment==='credit'), camt=cords.reduce((s,o)=>s+o.total,0);
+  const cords=ords.filter(isPaymentPending), camt=cords.reduce((s,o)=>s+o.total,0);
   document.getElementById('d-rev').textContent=`Rs. ${rev.toLocaleString('en-IN')}`;
   document.getElementById('d-rev-sub').textContent=`${ords.length} orders`;
   const pe=document.getElementById('d-profit');
@@ -1032,14 +1040,15 @@ function saveRetailSale(){
   });
   if(!items.length){alert('Add at least one item');return;}
   const note=document.getElementById('retail-note').value.trim();
-  const order={id:'RET-'+Date.now(),merchantId:'retail',merchantName:'Retail Customer',type:'retail',items,total,payment:retailPayMode,note,time:new Date().toISOString()};
+  const order={id:'RET-'+Date.now(),merchantId:'retail',merchantName:'Retail Customer',type:'retail',items,total,payment:retailPayMode,paymentStatus:retailPayMode==='credit'?'pending':'received',paidAt:retailPayMode==='credit'?null:new Date().toISOString(),receivedMode:retailPayMode==='credit'?null:retailPayMode,note,time:new Date().toISOString()};
   db.collection('orders').doc(order.id).set(order).catch(console.error);
   closeModal('mo-retail');
 }
 function updOrdPay(id,mode){
   const i=ORDERS.findIndex(o=>o.id===id);if(i<0)return;
-  ORDERS[i].payment=mode;
-  db.collection('orders').doc(id).update({payment:mode}).catch(console.error);
+  const patch={payment:mode,paymentStatus:mode==='credit'?'pending':'received',paidAt:mode==='credit'?null:new Date().toISOString(),receivedMode:mode==='credit'?null:mode};
+  Object.assign(ORDERS[i],patch);
+  db.collection('orders').doc(id).update(patch).catch(console.error);
   renderLive();renderDashboard();
 }
 
@@ -1135,7 +1144,7 @@ function saveAdminOrder(){
   PRODUCTS.forEach(p=>{const q=adminOrderItems[p.id]||0;if(q>0){const amt=q*p.sale;items.push({skuId:p.id,skuName:p.name,qty:q,price:p.sale,amount:amt,rep:null});total+=amt;}});
   if(!items.length){alert('Add at least one product');return;}
   const note=document.getElementById('ao-review-note').value.trim();
-  const order={id:'ORD-'+Date.now(),merchantId:adminOrderMerchant.id,merchantName:adminOrderMerchant.name,items,total,payment:adminOrderPayMode,note,time:new Date().toISOString()};
+  const order={id:'ORD-'+Date.now(),merchantId:adminOrderMerchant.id,merchantName:adminOrderMerchant.name,items,total,payment:adminOrderPayMode,paymentStatus:adminOrderPayMode==='credit'?'pending':'received',paidAt:adminOrderPayMode==='credit'?null:new Date().toISOString(),receivedMode:adminOrderPayMode==='credit'?null:adminOrderPayMode,note,time:new Date().toISOString()};
   db.collection('orders').doc(order.id).set(order).catch(console.error);
   closeModal('mo-order-review');
 }
@@ -1355,7 +1364,7 @@ function renderInvoices(){
   if(q)ords=ords.filter(o=>o.merchantName.toLowerCase().includes(q)||o.id.toLowerCase().includes(q));
   if(pf)ords=ords.filter(o=>o.payment===pf);
   const pm={cash:'bg',upi:'bb',credit:'ba'},pl={cash:'Cash',upi:'UPI',credit:'Credit'};
-  document.getElementById('inv-body').innerHTML=ords.length?ords.map(o=>{const t=new Date(o.time);return `<tr class="click" onclick="openInvModal('${o.id}')"><td class="mono" style="font-size:11px">${o.id}</td><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${o.items.length} item${o.items.length>1?'s':''}</td><td class="mono" style="font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td><span class="badge ${pm[o.payment]}">${pl[o.payment]}</span></td><td><span class="badge ${o.payment==='credit'?'ba':'bg'}">${o.payment==='credit'?'Pending':'Paid'}</span></td><td><button class="btn-s sm" onclick="event.stopPropagation();dlPDF('${o.id}')">PDF</button> <button class="btn-s sm" onclick="event.stopPropagation();shareInvoiceWhatsApp(ORDERS.find(x=>x.id==='${o.id}'))">WA</button></td></tr>`;}).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No invoices</td></tr>`;
+  document.getElementById('inv-body').innerHTML=ords.length?ords.map(o=>{const t=new Date(o.time);return `<tr class="click" onclick="openInvModal('${o.id}')"><td class="mono" style="font-size:11px">${o.id}</td><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${o.items.length} item${o.items.length>1?'s':''}</td><td class="mono" style="font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td><span class="badge ${pm[o.payment]}">${pl[o.payment]}</span></td><td><span class="badge ${isPaymentPending(o)?'ba':'bg'}">${paymentStatusText(o)}</span></td><td><button class="btn-s sm" onclick="event.stopPropagation();dlPDF('${o.id}')">PDF</button> <button class="btn-s sm" onclick="event.stopPropagation();shareInvoiceWhatsApp(ORDERS.find(x=>x.id==='${o.id}'))">WA</button></td></tr>`;}).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No invoices</td></tr>`;
 }
 function openInvModal(id){
   const o=ORDERS.find(x=>x.id===id);if(!o)return;
@@ -1388,7 +1397,7 @@ function showReport(type){
     const rev=ords.reduce((s,o)=>s+o.total,0),cogs=ords.reduce((s,o)=>s+o.items.reduce((ss,it)=>{const p=PRODUCTS.find(x=>x.id===it.skuId);return ss+(it.qty*(p?p.cost:0));},0),0),exp=exps.reduce((s,e)=>s+e.amount,0),gp=rev-cogs,np=gp-exp;
     h=`<div style="max-width:380px">`+[['Gross Revenue',rev,'var(--green)'],['Cost of Goods',`−${cogs.toLocaleString('en-IN')}`,'var(--red)'],['Gross Profit',gp,'var(--text)'],['Agent Expenses',`−${exp.toLocaleString('en-IN')}`,'var(--red)']].map(([l,v,c])=>`<div class="pl-row"><span class="pl-label">${l}</span><span class="pl-val" style="color:${c}">Rs.${typeof v==='number'?v.toLocaleString('en-IN'):v}</span></div>`).join('')+`<div class="pl-row pl-total"><span class="pl-label">${np<0?'Net Loss':'Net Profit'}</span><span class="pl-val" style="color:${np<0?'var(--red)':'var(--green)'}">Rs.${Math.abs(np).toLocaleString('en-IN')}</span></div></div>`;
   }else if(type==='credit'){
-    const co=ords.filter(o=>o.payment==='credit');
+    const co=ords.filter(isPaymentPending);
     h=`<table class="dt"><thead><tr><th>Merchant</th><th>Date</th><th>Amount</th><th>Invoice ID</th></tr></thead><tbody>`+(co.length?co.sort((a,b)=>new Date(b.time)-new Date(a.time)).map(o=>`<tr><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${new Date(o.time).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td><td class="mono" style="color:var(--amber);font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td class="mono" style="font-size:11px">${o.id}</td></tr>`).join(''):`<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:28px">No pending credit</td></tr>`)+`</tbody></table>`;
   }else if(type==='expense'){
     const t=exps.reduce((s,e)=>s+e.amount,0);
@@ -1417,8 +1426,8 @@ function renderDSR(){
   const merchantOrds=dayOrds.filter(o=>o.type!=='retail');
   const retailOrds=dayOrds.filter(o=>o.type==='retail');
   const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
-  const cashRec=dayOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
-  const creditTotal=merchantOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+  const cashRec=dayOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+  const creditTotal=merchantOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
   const retailTotal=retailOrds.reduce((s,o)=>s+o.total,0);
   const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
   // Opening balance: prefer admin-entered morning value; fall back to prev closing + today receipt
@@ -1447,9 +1456,9 @@ function renderDSR(){
       if(it.rep&&it.rep.qty>0) repQtys[it.skuId]=(repQtys[it.skuId]||0)+it.rep.qty;
     }));
     const bill=mOrds.reduce((s,o)=>s+o.total,0);
-    const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&o.payment==='credit'&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
-    const cashCollected=mOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
-    const creditLeft=mOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+    const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&isPaymentPending(o)&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
+    const cashCollected=mOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+    const creditLeft=mOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
     const totalDue=prevBal+bill;
     return {m,prodQtys,repQtys,bill,prevBal,cashCollected,creditLeft,totalDue,hasActivity:mOrds.length>0};
   });
@@ -1543,7 +1552,7 @@ function renderDSR(){
     <div class="pl-row"><span class="pl-label">Empty Trays Returned</span><span class="pl-val mono">${tray.empty||'—'}</span></div>`;
 
   // Balance Payment — all pending credits
-  const allCreditOrds=ORDERS.filter(o=>o.type!=='retail'&&o.payment==='credit');
+  const allCreditOrds=ORDERS.filter(o=>o.type!=='retail'&&isPaymentPending(o));
   const creditByMerchant={};
   allCreditOrds.forEach(o=>{
     if(!creditByMerchant[o.merchantId]) creditByMerchant[o.merchantId]={name:o.merchantName,orders:[],total:0};
@@ -1648,7 +1657,7 @@ function switchDSRTab(tab){
 let activeCreditMerchId=null;
 function openCreditPayModal(merchantId){
   activeCreditMerchId=merchantId;
-  const orders=ORDERS.filter(o=>o.merchantId===merchantId&&o.payment==='credit');
+  const orders=ORDERS.filter(o=>o.merchantId===merchantId&&isPaymentPending(o));
   const name=orders[0]?.merchantName||'Merchant';
   const total=orders.reduce((s,o)=>s+o.total,0);
   document.getElementById('cp-title').textContent=`Record Payment — ${name}`;
@@ -1670,10 +1679,10 @@ function saveCreditPayment(){
   if(!amt||amt<=0){alert('Enter a valid amount');return;}
   const mode=document.getElementById('cp-pay').value;
   let remaining=amt;
-  const creditOrds=ORDERS.filter(o=>o.merchantId===activeCreditMerchId&&o.payment==='credit').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const creditOrds=ORDERS.filter(o=>o.merchantId===activeCreditMerchId&&isPaymentPending(o)).sort((a,b)=>new Date(a.time)-new Date(b.time));
   for(const o of creditOrds){
     if(remaining<=0) break;
-    if(remaining>=o.total){o.payment=mode;remaining-=o.total;}
+    if(remaining>=o.total){o.payment=mode;o.paymentStatus='received';o.paidAt=new Date().toISOString();o.receivedMode=mode;remaining-=o.total;}
     else{o.partialPaid=(o.partialPaid||0)+remaining;remaining=0;}
   }
   // Persist updated credit orders to Firestore
@@ -1699,8 +1708,8 @@ function downloadDSR(){
   const tray=TRAYS[datekey]||{};
 
   const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
-  const cashRec=dayOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
-  const creditTotal=dayOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+  const cashRec=dayOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+  const creditTotal=dayOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
   const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
   const adminOBxl=OPENING_BAL[datekey];
   const prevClosing=prevSE._closing||0;
@@ -1720,9 +1729,9 @@ function downloadDSR(){
       if(it.rep&&it.rep.qty>0) repQtys[it.skuId]=(repQtys[it.skuId]||0)+it.rep.qty;
     }));
     const bill=mOrds.reduce((s,o)=>s+o.total,0);
-    const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&o.payment==='credit'&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
-    const cashCollected=mOrds.filter(o=>o.payment!=='credit').reduce((s,o)=>s+o.total,0);
-    const creditLeft=mOrds.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0);
+    const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&isPaymentPending(o)&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
+    const cashCollected=mOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+    const creditLeft=mOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
     const totalDue=prevBal+bill;
     const totalRep=PRODUCTS.reduce((s,p)=>s+(repQtys[p.id]||0),0);
     return [i+1,m.name,...PRODUCTS.map(p=>prodQtys[p.id]||0),totalRep,prevBal,bill,totalDue,cashCollected,creditLeft];
@@ -1942,7 +1951,7 @@ function exportReport(){
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(`Period: ${calLabel()} · Generated: ${new Date().toLocaleDateString('en-IN')}`,14,21);
   const rev=ords.reduce((s,o)=>s+o.total,0),cogs=ords.reduce((s,o)=>s+o.items.reduce((ss,it)=>{const p=PRODUCTS.find(x=>x.id===it.skuId);return ss+(it.qty*(p?p.cost:0));},0),0),exp=exps.reduce((s,e)=>s+e.amount,0),np=rev-cogs-exp;
   doc.setTextColor(30,30,30);
-  doc.autoTable({startY:36,head:[['Metric','Value']],body:[['Gross Revenue',`Rs.${rev.toLocaleString('en-IN')}`],['COGS',`Rs.${cogs.toLocaleString('en-IN')}`],['Agent Expenses',`Rs.${exp.toLocaleString('en-IN')}`],[np<0?'Net Loss':'Net Profit',`Rs.${Math.abs(np).toLocaleString('en-IN')}`],['Total Orders',ords.length],['Credit Pending',`Rs.${ords.filter(o=>o.payment==='credit').reduce((s,o)=>s+o.total,0).toLocaleString('en-IN')}`]],headStyles:{fillColor:[15,15,15],textColor:255,fontSize:9,fontStyle:'bold'},bodyStyles:{fontSize:9},columnStyles:{1:{halign:'right'}},margin:{left:14,right:14}});
+  doc.autoTable({startY:36,head:[['Metric','Value']],body:[['Gross Revenue',`Rs.${rev.toLocaleString('en-IN')}`],['COGS',`Rs.${cogs.toLocaleString('en-IN')}`],['Agent Expenses',`Rs.${exp.toLocaleString('en-IN')}`],[np<0?'Net Loss':'Net Profit',`Rs.${Math.abs(np).toLocaleString('en-IN')}`],['Total Orders',ords.length],['Pending Payments',`Rs.${ords.filter(isPaymentPending).reduce((s,o)=>s+o.total,0).toLocaleString('en-IN')}`]],headStyles:{fillColor:[15,15,15],textColor:255,fontSize:9,fontStyle:'bold'},bodyStyles:{fontSize:9},columnStyles:{1:{halign:'right'}},margin:{left:14,right:14}});
   doc.autoTable({startY:doc.lastAutoTable.finalY+10,head:[['Invoice ID','Merchant','Date','Amount','Payment']],body:ords.sort((a,b)=>new Date(b.time)-new Date(a.time)).map(o=>[o.id,o.merchantName,new Date(o.time).toLocaleDateString('en-IN'),`Rs.${o.total}`,o.payment]),headStyles:{fillColor:[15,15,15],textColor:255,fontSize:8,fontStyle:'bold'},bodyStyles:{fontSize:8},margin:{left:14,right:14}});
   doc.save(`ModernBread-${calLabel().replace(/\s/g,'-')}.pdf`);
 }
