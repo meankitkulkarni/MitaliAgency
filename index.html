@@ -147,6 +147,13 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
 .dt tr:last-child td{border-bottom:none}
 .dt tbody tr:hover{background:var(--bg2)}
 .dt tr.click{cursor:pointer}
+.route-order-table{width:100%;border-collapse:collapse;margin-top:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)}
+.route-order-table th{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:7px 9px;border-bottom:1px solid var(--border);text-align:left;background:var(--bg2)}
+.route-order-table td{font-size:12px;padding:8px 9px;border-bottom:1px solid var(--border);vertical-align:middle}
+.route-order-table tr:last-child td{border-bottom:none}
+.route-order-table .num{text-align:right;font-family:'DM Mono',monospace;font-size:12px}
+.route-order-table .code{font-family:'DM Mono',monospace;color:var(--text2);font-size:11px}
+.route-order-table .rep{color:var(--amber);font-weight:700}
 /* BADGES */
 .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
 .bg{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
@@ -1562,6 +1569,37 @@ function renderDSR(){
     }).join('');
   }
 
+  if(dsrRows.length){
+    routeList.innerHTML=dsrRows.map((r,i)=>{
+      const itemRows=PRODUCTS.map(p=>{
+        const q=r.prodQtys[p.id]||0,rep=r.repQtys[p.id]||0;
+        if(!q&&!rep) return '';
+        const amount=q*(p.sale||0);
+        return `<tr><td style="font-weight:600">${p.name}</td><td class="code">${p.code||'&mdash;'}</td><td class="num">${q}</td><td class="num rep">${rep||'&mdash;'}</td><td class="num">Rs.${(p.sale||0).toLocaleString('en-IN')}</td><td class="num" style="font-weight:700">Rs.${amount.toLocaleString('en-IN')}</td></tr>`;
+      }).filter(Boolean).join('');
+      const itemsTable=itemRows
+        ?`<table class="route-order-table"><thead><tr><th>Product</th><th>Code</th><th style="text-align:right">Qty</th><th style="text-align:right">Repl</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>`
+        :`<div style="font-size:11px;color:var(--text3);margin-top:8px">No orders today</div>`;
+      const hasPrevBal=r.prevBal>0;
+      const bg=r.hasActivity?'var(--bg)':'var(--bg2)';
+      const opacity=r.hasActivity?'1':'0.5';
+      return `<div style="padding:14px 20px;border-bottom:1px solid var(--border);background:${bg};opacity:${opacity}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;margin-bottom:6px"><span style="color:var(--text3);font-size:11px;margin-right:6px">${i+1}</span>${r.m.name}${r.m.area?`<span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px">${r.m.area}</span>`:''}</div>
+            ${itemsTable}
+            ${hasPrevBal?`<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:6px">Prev balance: Rs.${r.prevBal.toLocaleString('en-IN')}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0;min-width:130px">
+            ${r.bill>0?`<div style="font-size:15px;font-weight:800;font-family:'DM Mono',monospace">Rs.${r.bill.toLocaleString('en-IN')}</div>`:''}
+            ${r.cashCollected>0?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:2px">Received Rs.${r.cashCollected.toLocaleString('en-IN')}</div>`:''}
+            ${r.creditLeft>0?`<div style="font-size:11px;color:var(--amber);font-weight:600;margin-top:2px">CR Rs.${r.creditLeft.toLocaleString('en-IN')}</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   // Retail row
   const retailRow=document.getElementById('dsr-retail-row');
   if(retailOrds.length){
@@ -1786,8 +1824,9 @@ function downloadDSR(){
   const wb=XLSX.utils.book_new();
 
   // ── Sheet 1: Route Sheet ──
-  const routeHeader=['#','SHOP',...PRODUCTS.map(p=>p.code||p.name),'REPL','PREV BAL','BILL','TOTAL DUE','CASH RCVD','CR PENDING'];
-  const routeRows=MERCHANTS.map((m,i)=>{
+  const routeHeader=['#','SHOP','AREA','PRODUCT','DSR CODE','QTY','REPL','RATE','AMOUNT','PREV BAL','BILL','TOTAL DUE','CASH RCVD','CR PENDING'];
+  const routeRows=[];
+  MERCHANTS.forEach((m,i)=>{
     const mOrds=dayOrds.filter(o=>o.merchantId===m.id&&o.type!=='retail');
     const prodQtys={},repQtys={};
     PRODUCTS.forEach(p=>{prodQtys[p.id]=0;repQtys[p.id]=0;});
@@ -1800,13 +1839,40 @@ function downloadDSR(){
     const cashCollected=dayPayments.filter(o=>o.merchantId===m.id).reduce((s,o)=>s+o.total,0);
     const creditLeft=mOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
     const totalDue=prevBal+bill;
-    const totalRep=PRODUCTS.reduce((s,p)=>s+(repQtys[p.id]||0),0);
-    return [i+1,m.name,...PRODUCTS.map(p=>prodQtys[p.id]||0),totalRep,prevBal,bill,totalDue,cashCollected,creditLeft];
+    const itemLines=PRODUCTS.map(p=>{
+      const qty=prodQtys[p.id]||0;
+      const repl=repQtys[p.id]||0;
+      if(!qty&&!repl) return null;
+      return {product:p,qty,repl,rate:p.sale||0,amount:qty*(p.sale||0)};
+    }).filter(Boolean);
+    if(!itemLines.length){
+      routeRows.push([i+1,m.name,m.area||'','No orders today','','','','','',prevBal,bill,totalDue,cashCollected,creditLeft]);
+    } else {
+      itemLines.forEach((line,idx)=>{
+        routeRows.push([
+          idx===0?i+1:'',
+          idx===0?m.name:'',
+          idx===0?(m.area||''):'',
+          line.product.name,
+          line.product.code||'',
+          line.qty,
+          line.repl,
+          line.rate,
+          line.amount,
+          idx===0?prevBal:'',
+          idx===0?bill:'',
+          idx===0?totalDue:'',
+          idx===0?cashCollected:'',
+          idx===0?creditLeft:''
+        ]);
+      });
+    }
   });
   // Totals row
-  const totProd=PRODUCTS.map(p=>routeRows.reduce((s,r)=>s+(r[2+PRODUCTS.indexOf(PRODUCTS.find(x=>x.id===p.id))]||0),0));
-  const totReplCol=routeRows.reduce((s,r)=>s+(r[2+PRODUCTS.length]||0),0);
-  routeRows.push(['','TOTAL',...totProd,totReplCol,'',totalBill,totalBill,cashRec,creditTotal]);
+  const routeQtyTotal=routeRows.reduce((s,r)=>s+(Number(r[5])||0),0);
+  const routeReplTotal=routeRows.reduce((s,r)=>s+(Number(r[6])||0),0);
+  const routeAmountTotal=routeRows.reduce((s,r)=>s+(Number(r[8])||0),0);
+  routeRows.push(['','TOTAL','','','',routeQtyTotal,routeReplTotal,'',routeAmountTotal,'',totalBill,totalBill,cashRec,creditTotal]);
 
   const wsRoute=XLSX.utils.aoa_to_sheet([
     ['MITALI AGENCY — ROHA-RAIGAD'],
@@ -1818,7 +1884,7 @@ function downloadDSR(){
     ...routeRows
   ]);
   // Column widths
-  wsRoute['!cols']=[{wch:4},{wch:28},...PRODUCTS.map(()=>({wch:8})),{wch:6},{wch:10},{wch:10},{wch:10},{wch:12},{wch:12}];
+  wsRoute['!cols']=[{wch:4},{wch:28},{wch:16},{wch:30},{wch:10},{wch:8},{wch:8},{wch:10},{wch:12},{wch:10},{wch:10},{wch:10},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb,wsRoute,'Route Sheet');
 
   // ── Sheet 2: Day Summary ──
