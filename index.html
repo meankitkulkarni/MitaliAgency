@@ -768,7 +768,7 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
     </div>
   </div>
   <div class="fg"><label class="fl">Note (optional)</label><input class="fi" type="text" id="ao-review-note" placeholder="Any note..."/></div>
-  <div class="mf"><button class="btn-s" onclick="closeModal('mo-order-review')">Cancel</button><button class="btn-p" id="ao-save-btn" onclick="saveAdminOrder()">Save Order</button></div>
+  <div class="mf"><button class="btn-s" onclick="closeModal('mo-order-review')">Cancel</button><button class="btn-p" id="ao-save-btn" data-keep-text="true" onclick="saveAdminOrder()">Save Order</button></div>
 </div></div>
 
 <!-- EDIT ORDER MODAL -->
@@ -897,7 +897,8 @@ function buttonIconFor(label){
   return '';
 }
 function iconizeButton(btn){
-  if(!btn||btn.dataset.iconized==='1'||btn.classList.contains('nav-item'))return;
+  if(!btn||btn.dataset.keepText==='true'||btn.dataset.iconized==='1'||btn.classList.contains('nav-item'))return;
+  if(btn.closest('.mo')||!btn.closest('table'))return;
   const text=btn.textContent.replace(/\s+/g,' ').trim();
   if(['Cash','UPI','Credit','Route Sheet','Day Close'].includes(text))return;
   const icon=buttonIconFor(text);
