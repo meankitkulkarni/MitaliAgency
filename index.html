@@ -920,6 +920,18 @@ function startButtonIconizer(){
   })));
   mo.observe(document.body,{childList:true,subtree:true});
 }
+function startNumberInputCleaner(){
+  document.addEventListener('focusin',e=>{
+    const el=e.target;
+    if(el&&el.matches&&el.matches('input[type="number"]')&&el.value==='0')el.value='';
+  });
+  document.addEventListener('input',e=>{
+    const el=e.target;
+    if(!el||!el.matches||!el.matches('input[type="number"]'))return;
+    const v=String(el.value);
+    if(/^0+\d/.test(v))el.value=v.replace(/^0+/,'');
+  });
+}
 function compactDateKey(d=new Date()){
   return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
 }
@@ -2331,6 +2343,7 @@ renderCalGrid();
 document.getElementById('cal-label').textContent='Today';
 renderDashboard();renderProducts();renderMerchants();
 startButtonIconizer();
+startNumberInputCleaner();
 checkOpeningBalancePrompt();
 setInterval(checkOpeningBalancePrompt, 60000);
 // Start real-time Firebase listeners
