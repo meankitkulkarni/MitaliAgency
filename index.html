@@ -814,6 +814,20 @@ function paymentStatusText(o){
 function sortProducts(){
   PRODUCTS.sort((a,b)=>((a.sortOrder??999999)-(b.sortOrder??999999))||String(a.name||'').localeCompare(String(b.name||'')));
 }
+function compactDateKey(d=new Date()){
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function nextOrderNumber(prefix='ORD', date=new Date()){
+  const key=compactDateKey(date);
+  const re=new RegExp(`^${prefix}-${key}-(\\d{3})$`);
+  const max=ORDERS.reduce((m,o)=>{
+    const val=o.orderNo||o.id||'';
+    const match=String(val).match(re);
+    return match?Math.max(m,parseInt(match[1],10)):m;
+  },0);
+  return `${prefix}-${key}-${String(max+1).padStart(3,'0')}`;
+}
+function orderDisplayId(o){return (o&&o.orderNo)||((o&&o.id)||'');}
 function filterItems(arr){
   const f=curFilter;
   return arr.filter(o=>{
@@ -1044,7 +1058,8 @@ function saveRetailSale(){
   });
   if(!items.length){alert('Add at least one item');return;}
   const note=document.getElementById('retail-note').value.trim();
-  const order={id:'RET-'+Date.now(),merchantId:'retail',merchantName:'Retail Customer',type:'retail',items,total,payment:retailPayMode,paymentStatus:retailPayMode==='credit'?'pending':'received',paidAt:retailPayMode==='credit'?null:new Date().toISOString(),receivedMode:retailPayMode==='credit'?null:retailPayMode,note,time:new Date().toISOString()};
+  const orderNo=nextOrderNumber('RET');
+  const order={id:orderNo,orderNo,merchantId:'retail',merchantName:'Retail Customer',type:'retail',items,total,payment:retailPayMode,paymentStatus:retailPayMode==='credit'?'pending':'received',paidAt:retailPayMode==='credit'?null:new Date().toISOString(),receivedMode:retailPayMode==='credit'?null:retailPayMode,note,time:new Date().toISOString()};
   db.collection('orders').doc(order.id).set(order).catch(console.error);
   closeModal('mo-retail');
 }
@@ -1148,7 +1163,8 @@ function saveAdminOrder(){
   PRODUCTS.forEach(p=>{const q=adminOrderItems[p.id]||0;if(q>0){const amt=q*p.sale;items.push({skuId:p.id,skuName:p.name,qty:q,price:p.sale,amount:amt,rep:null});total+=amt;}});
   if(!items.length){alert('Add at least one product');return;}
   const note=document.getElementById('ao-review-note').value.trim();
-  const order={id:'ORD-'+Date.now(),merchantId:adminOrderMerchant.id,merchantName:adminOrderMerchant.name,items,total,payment:adminOrderPayMode,paymentStatus:adminOrderPayMode==='credit'?'pending':'received',paidAt:adminOrderPayMode==='credit'?null:new Date().toISOString(),receivedMode:adminOrderPayMode==='credit'?null:adminOrderPayMode,note,time:new Date().toISOString()};
+  const orderNo=nextOrderNumber('ORD');
+  const order={id:orderNo,orderNo,merchantId:adminOrderMerchant.id,merchantName:adminOrderMerchant.name,items,total,payment:adminOrderPayMode,paymentStatus:adminOrderPayMode==='credit'?'pending':'received',paidAt:adminOrderPayMode==='credit'?null:new Date().toISOString(),receivedMode:adminOrderPayMode==='credit'?null:adminOrderPayMode,note,time:new Date().toISOString()};
   db.collection('orders').doc(order.id).set(order).catch(console.error);
   closeModal('mo-order-review');
 }
@@ -1948,7 +1964,7 @@ function normalizeWhatsAppNumber(raw){let n=String(raw||'').replace(/\D/g,'');if
 function invoiceMessage(o){
   const pm={cash:'Cash collected',upi:'UPI paid',credit:'Credit pending'};
   const lines=o.items.map(it=>`- ${it.skuName}: ${it.qty} x Rs.${it.price} = Rs.${it.amount}`).join('\n');
-  return `Mitali Agency - Modern Bread Invoice\nDate: ${invoiceDateKey(o)}\nMerchant: ${o.merchantName}\nInvoice: ${o.id}\n\n${lines}\n\nTotal: Rs.${o.total}\nPayment: ${pm[o.payment]||o.payment}`;
+  return `Mitali Agency - Modern Bread Invoice\nDate: ${invoiceDateKey(o)}\nMerchant: ${o.merchantName}\nInvoice: ${orderDisplayId(o)}\n\n${lines}\n\nTotal: Rs.${o.total}\nPayment: ${pm[o.payment]||o.payment}`;
 }
 async function buildInvoicePdf(o){
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
@@ -1958,13 +1974,13 @@ async function buildInvoicePdf(o){
   doc.setTextColor(17,17,17);doc.setFont('helvetica','bold');doc.setFontSize(15);doc.text('Mitali Agency',logo?39:12,16);
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text('Modern Bread Distributor | Roha-Raigad',logo?39:12,22);
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(17,17,17);doc.text('INVOICE',W-12,15,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text(o.id,W-12,21,{align:'right'});doc.text(invoiceDateKey(o),W-12,26,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text(orderDisplayId(o),W-12,21,{align:'right'});doc.text(invoiceDateKey(o),W-12,26,{align:'right'});
   doc.setDrawColor(230,230,230);doc.line(12,36,W-12,36);
   doc.setTextColor(17,17,17);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('Bill To',12,45);doc.text('Payment',W-58,45);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(o.merchantName,12,51);if(merchant.area)doc.text(merchant.area,12,56);if(merchant.phone)doc.text(`WhatsApp: ${merchant.phone}`,12,61);
   doc.text(pm[o.payment]||o.payment,W-58,51);
   const body=[];o.items.forEach(it=>{body.push([it.skuName,it.qty,`Rs.${it.price}`,`Rs.${it.amount}`]);if(it.rep)body.push([it.rep.type==='replace'?`Replacement: ${it.rep.qty} units swapped`:`Replacement deduct (${it.rep.qty})`,'','',it.rep.type==='deduct'?`-Rs.${it.rep.deductAmt}`:'']);});
-  doc.autoTable({startY:70,head:[['Product','Qty','Rate','Amount']],body,foot:[['','','Grand Total',`Rs.${o.total}`]],headStyles:{fillColor:[23,23,23],textColor:255,fontStyle:'bold',fontSize:8},bodyStyles:{fontSize:8,textColor:[30,30,30]},footStyles:{fillColor:[245,245,245],textColor:[17,17,17],fontStyle:'bold',fontSize:9},alternateRowStyles:{fillColor:[252,252,252]},columnStyles:{1:{halign:'center',cellWidth:14},2:{halign:'right',cellWidth:23},3:{halign:'right',cellWidth:27}},margin:{left:12,right:12},styles:{font:'helvetica',cellPadding:3}});
+  doc.autoTable({startY:70,head:[['Product','Qty','Rate','Amount']],body,foot:[[{content:'Grand Total',colSpan:3,styles:{halign:'right'}},`Rs.${o.total}`]],headStyles:{fillColor:[23,23,23],textColor:255,fontStyle:'bold',fontSize:8},bodyStyles:{fontSize:8,textColor:[30,30,30]},footStyles:{fillColor:[245,245,245],textColor:[17,17,17],fontStyle:'bold',fontSize:9},alternateRowStyles:{fillColor:[252,252,252]},columnStyles:{1:{halign:'center',cellWidth:14},2:{halign:'right',cellWidth:23},3:{halign:'right',cellWidth:27}},margin:{left:12,right:12},styles:{font:'helvetica',cellPadding:3}});
   if(o.note){doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text(`Note: ${o.note}`,12,doc.lastAutoTable.finalY+8);}
   doc.setDrawColor(230,230,230);doc.line(12,H-18,W-12,H-18);doc.setFontSize(7);doc.setTextColor(120,120,120);doc.text('Thank you for your business.',W/2,H-11,{align:'center'});
   return doc;
