@@ -39,6 +39,7 @@ function startListeners(){
   });
   db.collection('products').onSnapshot(snap=>{
     PRODUCTS=snap.docs.map(d=>({...d.data(),id:d.id}));
+    sortProducts();
     if(curPage==='products')renderProducts();
   });
   db.collection('merchants').onSnapshot(snap=>{
@@ -809,6 +810,9 @@ function paymentStatusText(o){
   if(o.payment==='credit') return 'Pending';
   if(o.payment==='upi'&&o.paymentStatus==='pending') return 'Awaiting UPI';
   return 'Paid';
+}
+function sortProducts(){
+  PRODUCTS.sort((a,b)=>((a.sortOrder??999999)-(b.sortOrder??999999))||String(a.name||'').localeCompare(String(b.name||'')));
 }
 function filterItems(arr){
   const f=curFilter;
@@ -1834,6 +1838,37 @@ function saveProduct(){
 function delProduct(id){if(!confirm('Delete this product?'))return;db.collection('products').doc(id).delete().catch(console.error);}
 
 // ── MERCHANTS ──
+function renderProducts(){
+  sortProducts();
+  document.getElementById('prod-body').innerHTML=PRODUCTS.map((p,idx)=>{
+    const m=p.sale-p.cost,pc=p.sale>0?((m/p.sale)*100).toFixed(1):0;
+    return `<tr><td style="font-weight:600">${p.name}</td><td><span class="badge bgr" style="font-family:'DM Mono',monospace">${p.code||'—'}</span></td><td class="mono">Rs.${p.cost}</td><td class="mono">Rs.${p.sale}</td><td class="mono">Rs.${p.retail||'—'}</td><td><span class="badge ${m>=8?'bg':'ba'}">Rs.${m} (${pc}%)</span></td><td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-s sm" onclick="moveProduct('${p.id}',-1)" ${idx===0?'disabled style="opacity:.35;cursor:not-allowed"':''}>↑</button><button class="btn-s sm" onclick="moveProduct('${p.id}',1)" ${idx===PRODUCTS.length-1?'disabled style="opacity:.35;cursor:not-allowed"':''}>↓</button><button class="btn-s sm" onclick="openProductModal('${p.id}')">Edit</button><button class="btn-d sm" onclick="delProduct('${p.id}')">Delete</button></td></tr>`;
+  }).join('');
+}
+function saveProduct(){
+  const name=document.getElementById('prod-name').value.trim();
+  const cost=parseFloat(document.getElementById('prod-cost').value);
+  const sale=parseFloat(document.getElementById('prod-sale').value);
+  const retail=parseFloat(document.getElementById('prod-retail').value)||sale;
+  const code=document.getElementById('prod-code').value.trim().toUpperCase();
+  if(!name||!cost||!sale){alert('Fill all required fields');return;}
+  sortProducts();
+  const pid=editProdId||('p'+Date.now());
+  const existing=editProdId?PRODUCTS.find(x=>x.id===editProdId):null;
+  const prod=existing?{...existing,name,sale,cost,retail,code}:{id:pid,name,sale,cost,retail,code,sortOrder:PRODUCTS.length};
+  db.collection('products').doc(pid).set(prod).catch(console.error);
+  closeModal('mo-product');renderProducts();
+}
+function moveProduct(id,dir){
+  sortProducts();
+  const idx=PRODUCTS.findIndex(p=>p.id===id);
+  const next=idx+dir;
+  if(idx<0||next<0||next>=PRODUCTS.length)return;
+  [PRODUCTS[idx],PRODUCTS[next]]=[PRODUCTS[next],PRODUCTS[idx]];
+  PRODUCTS=PRODUCTS.map((p,i)=>({...p,sortOrder:i}));
+  renderProducts();
+  PRODUCTS.forEach(p=>db.collection('products').doc(p.id).set(p).catch(console.error));
+}
 function renderMerchants(){
   const q=(document.getElementById('merch-search').value||'').toLowerCase();
   document.getElementById('merch-body').innerHTML=MERCHANTS.filter(m=>m.name.toLowerCase().includes(q)||(m.area||'').toLowerCase().includes(q)).map(m=>{
