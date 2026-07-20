@@ -691,7 +691,7 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
 <div class="mo" id="mo-inv"><div class="md" style="width:560px">
   <div class="mt" id="inv-mt">Invoice</div>
   <div id="inv-mbody"></div>
-  <div class="mf"><button class="btn-s" onclick="closeModal('mo-inv')">Close</button><button class="btn-s" onclick="shareInvFromModal()">WhatsApp</button><button class="btn-p" onclick="dlFromModal()">Download PDF</button></div>
+  <div class="mf"><button class="btn-d" onclick="deleteInvFromModal()">Delete</button><button class="btn-s" onclick="closeModal('mo-inv')">Close</button><button class="btn-s" onclick="shareInvFromModal()">WhatsApp</button><button class="btn-p" onclick="dlFromModal()">Download PDF</button></div>
 </div></div>
 
 <!-- ADD ORDER MODAL - Step 1: Merchant Selection -->
@@ -1423,9 +1423,16 @@ function saveExpenseFromAdmin(){
   db.collection('expenses').doc(exp.id).set(exp).catch(console.error);
   closeModal('mo-expense');
 }
-function delExpense(id){
+async function delExpense(id){
   if(!confirm('Delete this expense?'))return;
-  db.collection('expenses').doc(id).delete().catch(console.error);
+  try{
+    await db.collection('expenses').doc(id).delete();
+    EXPENSES=EXPENSES.filter(e=>e.id!==id);
+    renderExpenses(); renderDashboard(); renderDSR(); renderCalGrid();
+  }catch(err){
+    console.error(err);
+    alert('Could not delete this expense. Please try again.');
+  }
 }
 
 // ── INVOICES ──
@@ -1436,7 +1443,7 @@ function renderInvoices(){
   if(q)ords=ords.filter(o=>o.merchantName.toLowerCase().includes(q)||o.id.toLowerCase().includes(q));
   if(pf)ords=ords.filter(o=>o.payment===pf);
   const pm={cash:'bg',upi:'bb',credit:'ba'},pl={cash:'Cash',upi:'UPI',credit:'Credit'};
-  document.getElementById('inv-body').innerHTML=ords.length?ords.map(o=>{const t=new Date(o.time);return `<tr class="click" onclick="openInvModal('${o.id}')"><td class="mono" style="font-size:11px">${o.id}</td><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${o.items.length} item${o.items.length>1?'s':''}</td><td class="mono" style="font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td><span class="badge ${pm[o.payment]}">${pl[o.payment]}</span></td><td><span class="badge ${isPaymentPending(o)?'ba':'bg'}">${paymentStatusText(o)}</span></td><td><button class="btn-s sm" onclick="event.stopPropagation();dlPDF('${o.id}')">PDF</button> <button class="btn-s sm" onclick="event.stopPropagation();shareInvoiceWhatsApp(ORDERS.find(x=>x.id==='${o.id}'))">WA</button></td></tr>`;}).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No invoices</td></tr>`;
+  document.getElementById('inv-body').innerHTML=ords.length?ords.map(o=>{const t=new Date(o.time);return `<tr class="click" onclick="openInvModal('${o.id}')"><td class="mono" style="font-size:11px">${o.id}</td><td style="font-weight:600">${o.merchantName}</td><td style="color:var(--text2);font-size:12px">${t.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} ${t.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</td><td>${o.items.length} item${o.items.length>1?'s':''}</td><td class="mono" style="font-weight:700">Rs.${o.total.toLocaleString('en-IN')}</td><td><span class="badge ${pm[o.payment]}">${pl[o.payment]}</span></td><td><span class="badge ${isPaymentPending(o)?'ba':'bg'}">${paymentStatusText(o)}</span></td><td><button class="btn-s sm" onclick="event.stopPropagation();dlPDF('${o.id}')">PDF</button> <button class="btn-s sm" onclick="event.stopPropagation();shareInvoiceWhatsApp(ORDERS.find(x=>x.id==='${o.id}'))">WA</button> <button class="btn-d sm" onclick="event.stopPropagation();deleteOrder('${o.id}')">Delete</button></td></tr>`;}).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No invoices</td></tr>`;
 }
 function openInvModal(id){
   const o=ORDERS.find(x=>x.id===id);if(!o)return;
@@ -1447,6 +1454,22 @@ function openInvModal(id){
   document.getElementById('mo-inv').classList.add('open');
 }
 function dlFromModal(){if(activeInv)dlPDF(activeInv.id);}
+async function deleteOrder(id){
+  const o=ORDERS.find(x=>x.id===id);
+  if(!o)return;
+  if(!confirm(`Delete invoice ${orderDisplayId(o)} for ${o.merchantName}?`))return;
+  try{
+    await db.collection('orders').doc(id).delete();
+    ORDERS=ORDERS.filter(x=>x.id!==id);
+    if(activeInv&&activeInv.id===id){activeInv=null;closeModal('mo-inv');}
+    renderInvoices(); renderLive(); renderDashboard(); renderDSR(); renderCalGrid();
+    if(curPage==='reports'&&activeReport)showReport(activeReport);
+  }catch(err){
+    console.error(err);
+    alert('Could not delete this invoice/order. Please try again.');
+  }
+}
+function deleteInvFromModal(){if(activeInv)deleteOrder(activeInv.id);}
 
 // ── REPORTS ──
 function showReport(type){

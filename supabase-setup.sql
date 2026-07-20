@@ -121,6 +121,20 @@ begin
 end;
 $$;
 
+grant delete on public.mb_orders to anon, authenticated;
+grant delete on public.mb_expenses to anon, authenticated;
+
+drop policy if exists "ModernBread delete active rows" on public.mb_orders;
+drop policy if exists "ModernBread delete active rows" on public.mb_expenses;
+
+create policy "ModernBread delete active rows" on public.mb_orders
+  for delete to anon, authenticated
+  using (deleted_at is null);
+
+create policy "ModernBread delete active rows" on public.mb_expenses
+  for delete to anon, authenticated
+  using (deleted_at is null);
+
 do $$
 begin
   if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'mb_documents') then
