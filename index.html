@@ -385,6 +385,10 @@ body{background:var(--bg2);color:var(--text);font-family:'Bricolage Grotesque',s
       <div class="card"><div class="cb"><div class="sec-hdr"><div class="sec-title">Product Performance</div></div><table class="dt"><thead><tr><th>Product</th><th>Units</th><th>Revenue</th><th>Margin</th></tr></thead><tbody id="prod-perf"></tbody></table></div></div>
       <div class="card"><div class="cb"><div class="sec-hdr"><div class="sec-title">P&amp;L Summary</div></div><div id="pl-body"></div></div></div>
     </div>
+    <div class="card" style="margin-top:16px"><div class="cb">
+      <div class="sec-hdr"><div class="sec-title">Unpaid Dues</div><div style="font-size:12px;color:var(--text2)" id="unpaid-total">Rs. 0 pending</div></div>
+      <div id="unpaid-dues-body"></div>
+    </div></div>
   </div>
 
   <!-- LIVE ORDERS -->
@@ -817,6 +821,7 @@ let adminOrderMerchant=null, adminOrderSKUIdx=0, adminOrderItems={}, adminOrderP
 function dk(d){ return (d||new Date()).toISOString().slice(0,10); }
 function isPaymentReceived(o){ return o&&o.payment!=='credit'&&o.paymentStatus!=='pending'; }
 function isPaymentPending(o){ return !isPaymentReceived(o); }
+function isSameDayValue(value,date){ return value&&new Date(value).toDateString()===date.toDateString(); }
 function paymentStatusText(o){
   if(!o) return '—';
   if(o.payment==='credit') return 'Pending';
@@ -881,6 +886,7 @@ function renderCalGrid(){
   document.getElementById('cal-month').textContent=new Date(y,m,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
   const first=new Date(y,m,1).getDay(), dim=new Date(y,m+1,0).getDate(), today=new Date();
   const dataDays=new Set([...ORDERS,...EXPENSES].map(o=>dk(new Date(o.time))));
+  ORDERS.filter(o=>o.paidAt).forEach(o=>dataDays.add(dk(new Date(o.paidAt))));
   Object.keys(DSR_SNAPSHOTS||{}).forEach(k=>dataDays.add(k));
   let h='';
   ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>h+=`<div class="cal-dh">${d}</div>`);
@@ -964,6 +970,7 @@ function renderDashboard(){
   document.getElementById('d-credit').textContent=`Rs. ${camt.toLocaleString('en-IN')}`;
   document.getElementById('d-credit-sub').textContent=`${cords.length} unpaid`;
   document.getElementById('d-exp').textContent=`Rs. ${totalExp.toLocaleString('en-IN')}`;
+  renderUnpaidDues();
   // balance
   const datekey=curFilter.type==='single'?dk(curFilter.date):dk();
   const prevKey=dk(new Date(new Date(datekey).getTime()-86400000));
@@ -983,6 +990,21 @@ function renderDashboard(){
   ce.textContent=`Rs. ${closing.toLocaleString('en-IN')}`;
   ce.style.color=closing<0?'var(--red)':'var(--text)';
   renderRevChart(); renderProdPerf(ords); renderPL(rev,cogs,totalExp,gp,np);
+}
+function renderUnpaidDues(){
+  const body=document.getElementById('unpaid-dues-body');
+  if(!body)return;
+  const dues=ORDERS.filter(o=>o.type!=='retail'&&isPaymentPending(o)).sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const total=dues.reduce((s,o)=>s+o.total,0);
+  document.getElementById('unpaid-total').textContent=`Rs. ${total.toLocaleString('en-IN')} pending`;
+  if(!dues.length){body.innerHTML=`<div class="empty"><div class="empty-title">No unpaid dues</div></div>`;return;}
+  body.innerHTML=`<table class="dt"><thead><tr><th>Merchant</th><th>Invoice</th><th>Date</th><th>Amount</th><th>Receive</th></tr></thead><tbody>${dues.map(o=>`<tr><td style="font-weight:600">${o.merchantName}</td><td class="mono" style="font-size:11px">${orderDisplayId(o)}</td><td style="color:var(--text2);font-size:12px">${new Date(o.time).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</td><td class="mono" style="font-weight:700;color:var(--amber)">Rs.${o.total.toLocaleString('en-IN')}</td><td style="display:flex;gap:6px"><button class="btn-s sm" onclick="markDueReceived('${o.id}','cash')">Cash</button><button class="btn-s sm" onclick="markDueReceived('${o.id}','upi')">UPI</button></td></tr>`).join('')}</tbody></table>`;
+}
+function markDueReceived(orderId,mode){
+  const o=ORDERS.find(x=>x.id===orderId);if(!o)return;
+  const patch={payment:mode,paymentStatus:'received',paidAt:new Date().toISOString(),receivedMode:mode};
+  Object.assign(o,patch);
+  db.collection('orders').doc(orderId).update(patch).then(()=>{renderDashboard();renderDSR();renderCalGrid();}).catch(console.error);
 }
 function renderRevChart(){
   const labels=[],data=[];
@@ -1468,8 +1490,9 @@ function renderDSR(){
 
   const merchantOrds=dayOrds.filter(o=>o.type!=='retail');
   const retailOrds=dayOrds.filter(o=>o.type==='retail');
+  const dayPayments=ORDERS.filter(o=>isPaymentReceived(o)&&isSameDayValue(o.paidAt||o.time,date));
   const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
-  const cashRec=dayOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+  const cashRec=dayPayments.reduce((s,o)=>s+o.total,0);
   const creditTotal=merchantOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
   const retailTotal=retailOrds.reduce((s,o)=>s+o.total,0);
   const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
@@ -1500,7 +1523,7 @@ function renderDSR(){
     }));
     const bill=mOrds.reduce((s,o)=>s+o.total,0);
     const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&isPaymentPending(o)&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
-    const cashCollected=mOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+    const cashCollected=dayPayments.filter(o=>o.merchantId===m.id).reduce((s,o)=>s+o.total,0);
     const creditLeft=mOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
     const totalDue=prevBal+bill;
     return {m,prodQtys,repQtys,bill,prevBal,cashCollected,creditLeft,totalDue,hasActivity:mOrds.length>0};
@@ -1751,7 +1774,8 @@ function downloadDSR(){
   const tray=TRAYS[datekey]||{};
 
   const totalBill=dayOrds.reduce((s,o)=>s+o.total,0);
-  const cashRec=dayOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+  const dayPayments=ORDERS.filter(o=>isPaymentReceived(o)&&isSameDayValue(o.paidAt||o.time,date));
+  const cashRec=dayPayments.reduce((s,o)=>s+o.total,0);
   const creditTotal=dayOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
   const totalExpD=dayExps.reduce((s,e)=>s+e.amount,0);
   const adminOBxl=OPENING_BAL[datekey];
@@ -1773,7 +1797,7 @@ function downloadDSR(){
     }));
     const bill=mOrds.reduce((s,o)=>s+o.total,0);
     const prevBal=ORDERS.filter(o=>o.merchantId===m.id&&isPaymentPending(o)&&new Date(o.time)<new Date(datekey+'T00:00:00')).reduce((s,o)=>s+o.total,0);
-    const cashCollected=mOrds.filter(isPaymentReceived).reduce((s,o)=>s+o.total,0);
+    const cashCollected=dayPayments.filter(o=>o.merchantId===m.id).reduce((s,o)=>s+o.total,0);
     const creditLeft=mOrds.filter(isPaymentPending).reduce((s,o)=>s+o.total,0);
     const totalDue=prevBal+bill;
     const totalRep=PRODUCTS.reduce((s,p)=>s+(repQtys[p.id]||0),0);
@@ -2053,10 +2077,16 @@ function invoiceDateKey(o){const d=new Date(o.time);return `${String(d.getDate()
 function invoiceFileName(o){return `invoice_${invoiceDateKey(o)}.pdf`;}
 function getOrderMerchant(o){return MERCHANTS.find(m=>m.id===o.merchantId)||{};}
 function normalizeWhatsAppNumber(raw){let n=String(raw||'').replace(/\D/g,'');if(n.length===10)n='91'+n;return n.length>=11?n:'';}
+function invoiceOrders(o){
+  const ids=o.collectedDueIds||[];
+  return [o,...ids.map(id=>ORDERS.find(x=>x.id===id)).filter(Boolean)];
+}
 function invoiceMessage(o){
   const pm={cash:'Cash collected',upi:'UPI paid',credit:'Credit pending'};
-  const lines=o.items.map(it=>`- ${it.skuName}: ${it.qty} x Rs.${it.price} = Rs.${it.amount}`).join('\n');
-  return `Mitali Agency - Modern Bread Invoice\nDate: ${invoiceDateKey(o)}\nMerchant: ${o.merchantName}\nInvoice: ${orderDisplayId(o)}\n\n${lines}\n\nTotal: Rs.${o.total}\nPayment: ${pm[o.payment]||o.payment}`;
+  const invs=invoiceOrders(o);
+  const lines=invs.map(inv=>`${orderDisplayId(inv)} (${new Date(inv.time).toLocaleDateString('en-IN',{day:'numeric',month:'short'})})\n`+inv.items.map(it=>`- ${it.skuName}: ${it.qty} x Rs.${it.price} = Rs.${it.amount}`).join('\n')+`\nSubtotal: Rs.${inv.total}`).join('\n\n');
+  const total=invs.reduce((s,inv)=>s+Number(inv.total||0),0);
+  return `Mitali Agency - Modern Bread Invoice\nDate: ${invoiceDateKey(o)}\nMerchant: ${o.merchantName}\nInvoice: ${orderDisplayId(o)}\n\n${lines}\n\nCollection Total: Rs.${total}\nPayment: ${pm[o.payment]||o.payment}`;
 }
 async function buildInvoicePdf(o){
   const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a5'});const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
@@ -2071,8 +2101,9 @@ async function buildInvoicePdf(o){
   doc.setTextColor(17,17,17);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('Bill To',12,45);doc.text('Payment',W-58,45);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(o.merchantName,12,51);if(merchant.area)doc.text(merchant.area,12,56);if(merchant.phone)doc.text(`WhatsApp: ${merchant.phone}`,12,61);
   doc.text(pm[o.payment]||o.payment,W-58,51);
-  const body=[];o.items.forEach(it=>{body.push([it.skuName,it.qty,`Rs.${it.price}`,`Rs.${it.amount}`]);if(it.rep)body.push([it.rep.type==='replace'?`Replacement: ${it.rep.qty} units swapped`:`Replacement deduct (${it.rep.qty})`,'','',it.rep.type==='deduct'?`-Rs.${it.rep.deductAmt}`:'']);});
-  doc.autoTable({startY:70,head:[['Product','Qty','Rate','Amount']],body,foot:[[{content:'Grand Total',colSpan:3,styles:{halign:'right'}},`Rs.${o.total}`]],headStyles:{fillColor:[23,23,23],textColor:255,fontStyle:'bold',fontSize:8},bodyStyles:{fontSize:8,textColor:[30,30,30]},footStyles:{fillColor:[245,245,245],textColor:[17,17,17],fontStyle:'bold',fontSize:9},alternateRowStyles:{fillColor:[252,252,252]},columnStyles:{1:{halign:'center',cellWidth:14},2:{halign:'right',cellWidth:23},3:{halign:'right',cellWidth:27}},margin:{left:12,right:12},styles:{font:'helvetica',cellPadding:3}});
+  const invs=invoiceOrders(o),body=[];invs.forEach((inv,idx)=>{if(idx>0)body.push([{content:`Previous bill: ${orderDisplayId(inv)} (${new Date(inv.time).toLocaleDateString('en-IN',{day:'numeric',month:'short'})})`,colSpan:4,styles:{fontStyle:'bold',fillColor:[250,250,250]}}]);inv.items.forEach(it=>{body.push([it.skuName,it.qty,`Rs.${it.price}`,`Rs.${it.amount}`]);if(it.rep)body.push([it.rep.type==='replace'?`Replacement: ${it.rep.qty} units swapped`:`Replacement deduct (${it.rep.qty})`,'','',it.rep.type==='deduct'?`-Rs.${it.rep.deductAmt}`:'']);});if(invs.length>1)body.push([{content:`Subtotal ${orderDisplayId(inv)}`,colSpan:3,styles:{halign:'right',fontStyle:'bold'}},`Rs.${inv.total}`]);});
+  const invoiceTotal=invs.reduce((s,inv)=>s+Number(inv.total||0),0);
+  doc.autoTable({startY:70,head:[['Product','Qty','Rate','Amount']],body,foot:[[{content:'Collection Total',colSpan:3,styles:{halign:'right'}},`Rs.${invoiceTotal}`]],headStyles:{fillColor:[23,23,23],textColor:255,fontStyle:'bold',fontSize:8},bodyStyles:{fontSize:8,textColor:[30,30,30]},footStyles:{fillColor:[245,245,245],textColor:[17,17,17],fontStyle:'bold',fontSize:9},alternateRowStyles:{fillColor:[252,252,252]},columnStyles:{1:{halign:'center',cellWidth:14},2:{halign:'right',cellWidth:23},3:{halign:'right',cellWidth:27}},margin:{left:12,right:12},styles:{font:'helvetica',cellPadding:3}});
   if(o.note){doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text(`Note: ${o.note}`,12,doc.lastAutoTable.finalY+8);}
   doc.setDrawColor(230,230,230);doc.line(12,H-18,W-12,H-18);doc.setFontSize(7);doc.setTextColor(120,120,120);doc.text('Thank you for your business.',W/2,H-11,{align:'center'});
   return doc;
